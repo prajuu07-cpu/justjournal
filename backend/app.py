@@ -30,7 +30,8 @@ trusted_origins = [
     "http://localhost:5173",
     "http://localhost:3000",
     "https://journalforx.netlify.app",
-    "https://journalpairs.netlify.app"
+    "https://journalpairs.netlify.app",
+    "https://tradejournal.netlify.app" # Placeholder for new account
 ]
 
 # Allow any netlify app in dev/testing if needed, but for now just ensure CORS is robust

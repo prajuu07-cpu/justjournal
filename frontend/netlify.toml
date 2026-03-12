@@ -1,6 +1,6 @@
 [[redirects]]
   from = "/api/*"
-  to = ":VITE_API_URL/:splat"
+  to = "https://tradejournal-6sdc.onrender.com/api/:splat"
   status = 200
 
 [[redirects]]

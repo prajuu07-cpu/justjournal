@@ -46,8 +46,7 @@ export function MonthlyReports() {
   const exportPDF = async () => {
     setExporting(true); setErr('');
     try {
-      const base = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
-      const url = `${base}/export/month/${year}/${month}`;
+      const url = `/api/export/month/${year}/${month}`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${localStorage.getItem('tjp_token')}` } });
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();
@@ -140,8 +139,7 @@ export function YearlyReports() {
   const exportPDF = async () => {
     setExporting(true); setErr('');
     try {
-      const base = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
-      const url = `${base}/export/year/${year}`;
+      const url = `/api/export/year/${year}`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${localStorage.getItem('tjp_token')}` } });
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();

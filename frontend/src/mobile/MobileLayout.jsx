@@ -3,7 +3,7 @@ import { useNavigate, NavLink, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext';
 import MobileDashboard from './pages/MobileDashboard';
 import MobileJournal from './pages/MobileJournal';
-import NewTrade from '../pages/NewTrade';
+import MobileNewTrade from './pages/MobileNewTrade';
 import { MobileMonthly, MobileYearly } from './pages/MobileReports';
 import MobileChecklist from './pages/MobileChecklist';
 import '../styles/mobile_rebuild.css';
@@ -66,7 +66,7 @@ export default function MobileLayout() {
       <main className="m-container">
         <Routes>
           <Route path="/" element={<MobileDashboard />} />
-          <Route path="/new-trade" element={<NewTrade />} />
+          <Route path="/new-trade" element={<MobileNewTrade />} />
           <Route path="/journal" element={<MobileJournal />} />
           <Route path="/monthly" element={<MobileMonthly />} />
           <Route path="/yearly" element={<MobileYearly />} />

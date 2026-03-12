@@ -1,6 +1,6 @@
 {
-  "name": "Trading Journal Pro",
-  "short_name": "TJP Pro",
+  "name": "Trading Journal",
+  "short_name": "Trading Journal",
   "description": "Professional Trading Journal with advanced analytics and reporting.",
   "start_url": "/",
   "display": "standalone",

@@ -25,7 +25,13 @@ app.config["JWT_SECRET_KEY"]           = jwt_secret
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = False  # expiry set per token (7d)
 
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
-CORS(app, origins=[frontend_url, "http://localhost:5173", "http://localhost:3000"])
+trusted_origins = [
+    frontend_url,
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://journalforx.netlify.app"
+]
+CORS(app, origins=trusted_origins, supports_credentials=True)
 
 jwt = JWTManager(app)
 

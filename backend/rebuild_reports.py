@@ -59,8 +59,7 @@ def _rebuild(user_id: str):
             losses     = sum(1 for t in mtrades if t["result"] == "Loss")
             breakevens = sum(1 for t in mtrades if t["result"] == "Breakeven")
             total      = len(mtrades)
-            relevant   = wins + losses
-            win_rate   = round(wins / relevant * 100, 2) if relevant > 0 else 0
+            win_rate   = round(wins / total * 100, 2) if total else 0
 
             net_pnl    = round(sum(float(t.get("pnl_percentage") or 0) for t in mtrades), 4)
             m1         = sum(1 for t in mtrades if t.get("model") == "Model 1")
@@ -96,8 +95,7 @@ def _rebuild(user_id: str):
             wins       = sum(d["wins"]           for d in m_docs)
             losses     = sum(d["losses"]         for d in m_docs)
             breakevens = sum(d["breakevens"]     for d in m_docs)
-            relevant   = wins + losses
-            win_rate   = round(wins / relevant * 100, 2) if relevant > 0 else 0
+            win_rate   = round(wins / total * 100, 2) if total else 0
 
             net_pnl    = round(sum(d["net_pnl"]  for d in m_docs), 4)
             m1         = sum(d["model1_trades"]  for d in m_docs)

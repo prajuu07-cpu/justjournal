@@ -77,9 +77,8 @@ def dashboard():
         )
 
     wins = sum(1 for t in final_trades if t["result"] == "Win")
-    losses = sum(1 for t in final_trades if t["result"] == "Loss")
-    relevant_count = wins + losses
-    win_rate = round(wins / relevant_count * 100, 2) if relevant_count > 0 else 0
+
+    win_rate = round(wins / final_count * 100, 2)
     net_pnl  = round(sum(float(t.get("pnl_percentage") or 0) for t in final_trades), 4)
 
 
@@ -126,7 +125,6 @@ def dashboard():
         avgRR=avg_rr if (avg_rr is not None and avg_rr != "—") else "—",
         maxDrawdown=round(max_dd, 2),
         maxLossStreak=max_streak,
-        winRateFixed=True,
         equityCurve=equity_curve,
         distribution=distribution,
     )

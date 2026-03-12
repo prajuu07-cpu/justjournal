@@ -438,8 +438,7 @@ def get_month_trades(year, month):
     total  = len(trades)
     wins   = sum(1 for t in trades if t.get("result") == "Win")
     losses = sum(1 for t in trades if t.get("result") == "Loss")
-    relevant = wins + losses
-    win_rate = round(wins / relevant * 100, 2) if relevant > 0 else 0
+    win_rate = round(wins / total * 100, 2) if total else 0
 
 
     net_pnl = round(sum(float(t.get("pnl_percentage") or 0) for t in trades), 4)
@@ -496,8 +495,7 @@ def get_year_trades(year):
     total   = len(trades)
     wins    = sum(1 for t in trades if t.get("result") == "Win")
     losses  = sum(1 for t in trades if t.get("result") == "Loss")
-    relevant = wins + losses
-    win_rate = round(wins / relevant * 100, 2) if relevant > 0 else 0
+    win_rate = round(wins / total * 100, 2) if total else 0
 
 
     net_pnl = round(sum(float(t.get("pnl_percentage") or 0) for t in trades), 4)

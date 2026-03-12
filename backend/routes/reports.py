@@ -77,8 +77,9 @@ def dashboard():
         )
 
     wins = sum(1 for t in final_trades if t["result"] == "Win")
-
-    win_rate = round(wins / final_count * 100, 2)
+    losses = sum(1 for t in final_trades if t["result"] == "Loss")
+    relevant_count = wins + losses
+    win_rate = round(wins / relevant_count * 100, 2) if relevant_count > 0 else 0
     net_pnl  = round(sum(float(t.get("pnl_percentage") or 0) for t in final_trades), 4)
 
 

@@ -414,9 +414,10 @@ def export_month_pdf(year, month):
     }).sort("date", 1))
 
     total  = len(trades)
-    wins   = sum(1 for t in trades if _sf(t.get("pnl_percentage")) > 0)
-    losses = sum(1 for t in trades if _sf(t.get("pnl_percentage")) < 0)
-    win_rate     = round(wins / total * 100, 2) if total else 0
+    wins   = sum(1 for t in trades if t.get("result") == "Win")
+    losses = sum(1 for t in trades if t.get("result") == "Loss")
+    relevant = wins + losses
+    win_rate = round(wins / relevant * 100, 2) if relevant > 0 else 0
     net_pnl      = round(sum(_sf(t.get("pnl_percentage")) for t in trades), 4)
     equity       = 1.0
     max_streak = streak = 0
@@ -471,9 +472,10 @@ def export_year_pdf(year):
     }).sort("date", 1))
 
     total  = len(trades)
-    wins   = sum(1 for t in trades if _sf(t.get("pnl_percentage")) > 0)
-    losses = sum(1 for t in trades if _sf(t.get("pnl_percentage")) < 0)
-    win_rate = round(wins / total * 100, 2) if total else 0
+    wins   = sum(1 for t in trades if t.get("result") == "Win")
+    losses = sum(1 for t in trades if t.get("result") == "Loss")
+    relevant = wins + losses
+    win_rate = round(wins / relevant * 100, 2) if relevant > 0 else 0
     net_pnl  = round(sum(_sf(t.get("pnl_percentage")) for t in trades), 4)
 
     monthly_pnl = {m: 0.0 for m in range(1, 13)}

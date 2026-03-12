@@ -31,7 +31,7 @@ export default function MobileLayout() {
       <div className={`m-overlay ${open ? 'visible' : ''}`} onClick={close}></div>
       <aside className={`m-sidebar ${open ? 'open' : ''}`}>
         <div className="m-sidebar-top">
-          <div className="m-logo">TJP Mobile</div>
+          <div className="m-logo">Trading Journal</div>
           <div className="m-user">@{user?.username}</div>
         </div>
         

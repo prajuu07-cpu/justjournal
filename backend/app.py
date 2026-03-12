@@ -6,6 +6,7 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
 import os
+import re
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -31,7 +32,7 @@ trusted_origins = [
     "http://localhost:3000",
     "https://journalforx.netlify.app",
     "https://journalpairs.netlify.app",
-    "https://tradejournal.netlify.app" # Placeholder for new account
+    re.compile(r"https://.*\.netlify\.app")
 ]
 
 # Allow any netlify app in dev/testing if needed, but for now just ensure CORS is robust

@@ -8,9 +8,9 @@ const YEARS = [2024, 2025, 2026, 2027];
 
 function StatBadge({ label, value, cls='' }) {
   return (
-    <div className="rpt-stat">
-      <div className="rpt-sl">{label}</div>
-      <div className={`rpt-sv ${cls}`}>{value != null ? value : '—'}</div>
+    <div className="m-stat-card">
+      <div className="m-stat-label">{label}</div>
+      <div className={`m-stat-val ${cls === 'rp' ? 'svG' : cls === 'rn' ? 'svR' : ''}`}>{value != null ? value : '—'}</div>
     </div>
   );
 }
@@ -18,9 +18,9 @@ function StatBadge({ label, value, cls='' }) {
 function CustomTooltip({ active, payload, label }) {
   if (active && payload && payload.length) {
     return (
-      <div style={{background:'#fff',border:'1px solid #E2E8F0',padding:'8px 12px',borderRadius:'8px',boxShadow:'0 4px 6px -1px rgb(0 0 0 / 0.1)'}}>
-        <p style={{margin:0,fontSize:12,fontWeight:600,color:'#64748B'}}>{`Trade ${label}`}</p>
-        <p style={{margin:0,fontSize:14,fontWeight:700,color:'#2563EB'}}>{`${payload[0].value}% Equity`}</p>
+      <div className="m-card" style={{ padding: '8px 12px', marginBottom: 0 }}>
+        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--m-sub)' }}>{`Trade ${label}`}</p>
+        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--m-primary)' }}>{`${payload[0].value}% Equity`}</p>
       </div>
     );
   }
@@ -63,57 +63,75 @@ export function MonthlyReports() {
   };
 
   return (
-    <div className="page">
+    <div className="m-page-fade">
       <div className="page-hd">
-        <h1>Monthly Dashboard</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-ghost" onClick={exportPDF} disabled={exporting}>
-            {exporting ? 'Exporting…' : '⬇ Export PDF'}
-          </button>
-        </div>
+        <h1>Monthly Report</h1>
+        <button className="m-glass-btn btn-sm" onClick={exportPDF} disabled={exporting}>
+          {exporting ? '...' : '⬇ PDF'}
+        </button>
       </div>
 
-      <div className="filter-bar">
-        <select className="fsel" value={year} onChange={e=>setYear(Number(e.target.value))}>
-          {YEARS.map(y=><option key={y} value={y}>{y}</option>)}
-        </select>
-        <div style={{display:'flex',gap:8,overflowX:'auto',paddingBottom:8,flex:1}}>
-          {MONTHS.map((m,i)=>{
-            const isSel = month === (i+1);
-            return <button key={m} className={`btn btn-sm ${isSel?'btn-primary':'btn-ghost'}`} onClick={()=>setMonth(i+1)}>{m}</button>;
-          })}
+      <div className="m-card" style={{ padding: '12px', marginBottom: 24 }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <select className="fsel" style={{ flex: 1, background: 'transparent', color: '#fff', border: 'none' }} value={year} onChange={e=>setYear(Number(e.target.value))}>
+            {YEARS.map(y=><option key={y} value={y} style={{ background: '#1e293b' }}>{y}</option>)}
+          </select>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', flex: 2 }}>
+            {MONTHS.map((m,i)=>{
+              const isSel = month === (i+1);
+              return (
+                <button 
+                  key={m} 
+                  className="m-glass-btn" 
+                  style={{ 
+                    padding: '6px 12px', 
+                    fontSize: '11px', 
+                    background: isSel ? 'var(--m-primary)' : 'transparent',
+                    borderColor: isSel ? 'var(--m-primary)' : 'var(--m-border)'
+                  }} 
+                  onClick={()=>setMonth(i+1)}
+                >
+                  {m}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {err && <div className="err-box">{err}</div>}
-      {loading ? <div className="loading">Loading…</div> : !data || data.trades.length===0 ? <div className="empty">No trades found for {MONTHS[month-1]} {year}.</div> : (
+      {loading ? <div className="loading">Generating report…</div> : !data || data.trades.length===0 ? <div className="m-card" style={{ textAlign: 'center' }}>No trades for this period.</div> : (
         <>
-          <div className="sg">
-            <StatBadge label="Total Trades" value={data.stats.totalTrades}/>
+          <div className="m-stat-grid">
+            <StatBadge label="Trades" value={data.stats.totalTrades}/>
             <StatBadge label="Wins" value={data.stats.wins} cls="rp"/>
             <StatBadge label="Losses" value={data.stats.losses} cls="rn"/>
-            <StatBadge label="Win Rate" value={`${data.stats.winRate}%`} cls={data.stats.winRate > 50 ? 'rp' : data.stats.winRate < 50 ? 'rn' : ''}/>
-            <StatBadge label="Net PNL" value={`${data.stats.netPNL>=0?'+':''}${data.stats.netPNL}%`} cls={data.stats.netPNL > 0 ? 'rp' : data.stats.netPNL < 0 ? 'rn' : ''}/>
-            <StatBadge label="Max Loss Streak" value={data.stats.maxLossStreak} cls="rn"/>
+            <StatBadge label="Win Rate" value={`${data.stats.winRate}%`} cls={data.stats.winRate > 50 ? 'rp' : ''}/>
+            <StatBadge label="Net PNL" value={`${data.stats.netPNL>=0?'+':''}${data.stats.netPNL}%`} cls={data.stats.netPNL > 0 ? 'rp' : 'rn'}/>
+            <StatBadge label="Max Loss" value={data.stats.maxLossStreak} cls="rn"/>
           </div>
 
-          <div className="card" style={{padding:0,overflow:'hidden'}}>
-            <table className="tbl">
-              <thead><tr><th>Date</th><th>Pair</th><th>Grade</th><th>Dir</th><th>Risk</th><th>Result</th><th>R:R</th><th>PNL</th></tr></thead>
-              <tbody>
-                {data.trades.map(t=>(
-                  <tr key={t.id} className={t.status === 'final' ? 'tr-final' : ''}>
-                    <td>{formatDate(t.date)}</td><td><strong>{t.pair}</strong></td>
-                    <td><span className={`pill ${t.grade==='A+'?'pAp':t.grade==='A'?'pB':'pLow'}`}>{t.grade}</span></td>
-                    <td>{t.direction}</td><td>{t.risk_percent}%</td>
-                    
-                    <td>{t.result?<span className={`pill ${t.result==='Win'?'pWin':t.result==='Loss'?'pLoss':'pBE'}`}>{t.result}</span>:'—'}</td>
-                    <td className="mono">{t.r_multiple?`${parseFloat(t.r_multiple).toFixed(2)}R`:'—'}</td>
-                    <td className={t.pnl_percentage>0?'rp':t.pnl_percentage<0?'rn':'mono'}>{t.pnl_percentage!=null?`${t.pnl_percentage>=0?'+':''}${parseFloat(t.pnl_percentage).toFixed(2)}%`:'—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ marginTop: 24 }}>
+            {data.trades.map(t=>(
+              <div key={t.id} className="m-card m-trade-card">
+                <div className="m-trade-info">
+                  <div className="m-trade-pair">{t.pair}</div>
+                  <div className="m-trade-date">
+                    {formatDate(t.date)} • {t.direction} • {t.risk_percent}% Risk
+                  </div>
+                  <div style={{ marginTop: 4 }}>
+                    <span className={`m-pill ${t.grade==='A+'?'m-pill-win':t.grade==='A'?'m-pill-be':'m-pill-loss'}`} style={{ fontSize: '10px' }}>{t.grade}</span>
+                  </div>
+                </div>
+                <div className="m-trade-result">
+                  <div className={`m-trade-profit ${t.pnl_percentage > 0 ? 'svG' : t.pnl_percentage < 0 ? 'svR' : ''}`}>
+                    {t.pnl_percentage != null ? `${t.pnl_percentage >= 0 ? '+' : ''}${parseFloat(t.pnl_percentage).toFixed(2)}%` : '—'}
+                  </div>
+                  <div className="mono" style={{ fontSize: '11px', color: 'var(--m-sub)' }}>{t.r_multiple?`${parseFloat(t.r_multiple).toFixed(2)}R`:'—'}</div>
+                  {t.result && <span className={`m-pill ${t.result==='Win'?'m-pill-win':t.result==='Loss'?'m-pill-loss':'m-pill-be'}`} style={{ fontSize: '10px' }}>{t.result}</span>}
+                </div>
+              </div>
+            ))}
           </div>
         </>
       )}
@@ -156,42 +174,39 @@ export function YearlyReports() {
   };
 
   return (
-    <div className="page">
+    <div className="m-page-fade">
       <div className="page-hd">
-        <h1>Yearly Dashboard</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-ghost" onClick={exportPDF} disabled={exporting}>
-            {exporting ? 'Exporting…' : '⬇ Export PDF'}
-          </button>
-        </div>
+        <h1>Yearly Report</h1>
+        <button className="m-glass-btn btn-sm" onClick={exportPDF} disabled={exporting}>
+          {exporting ? '...' : '⬇ PDF'}
+        </button>
       </div>
 
-      <div className="filter-bar">
-        <select className="fsel" value={year} onChange={e=>setYear(Number(e.target.value))}>
-          {YEARS.map(y=><option key={y} value={y}>{y}</option>)}
+      <div className="m-card" style={{ marginBottom: 24 }}>
+        <select className="fsel" style={{ width: '100%', background: 'transparent', color: '#fff', border: 'none' }} value={year} onChange={e=>setYear(Number(e.target.value))}>
+          {YEARS.map(y=><option key={y} value={y} style={{ background: '#1e293b' }}>{y}</option>)}
         </select>
       </div>
 
       {err && <div className="err-box">{err}</div>}
-      {loading ? <div className="loading">Loading…</div> : !data || data.trades.length===0 ? <div className="empty">No trades found for {year}.</div> : (
+      {loading ? <div className="loading">Processing year…</div> : !data || data.trades.length===0 ? <div className="m-card" style={{ textAlign: 'center' }}>No historical data for {year}.</div> : (
         <>
-          <div className="sg">
-            <StatBadge label="Total Trades" value={data.stats.totalTrades}/>
+          <div className="m-stat-grid">
+            <StatBadge label="Trades" value={data.stats.totalTrades}/>
             <StatBadge label="Wins" value={data.stats.wins} cls="rp"/>
             <StatBadge label="Losses" value={data.stats.losses} cls="rn"/>
-            <StatBadge label="Win Rate" value={`${data.stats.winRate}%`} cls={data.stats.winRate > 50 ? 'rp' : data.stats.winRate < 50 ? 'rn' : ''}/>
-            <StatBadge label="Net PNL" value={`${data.stats.netPNL>=0?'+':''}${data.stats.netPNL}%`} cls={data.stats.netPNL > 0 ? 'rp' : data.stats.netPNL < 0 ? 'rn' : ''}/>
-            <StatBadge label="Best Month" value={data.stats.bestMonth ? `${MONTHS[data.stats.bestMonth.month-1]} (${data.stats.bestMonth.pnl >= 0 ? '+' : ''}${data.stats.bestMonth.pnl}%)` : '—'} cls={data.stats.bestMonth && data.stats.bestMonth.pnl > 0 ? 'rp' : ''}/>
-            <StatBadge label="Worst Month" value={data.stats.worstMonth ? `${MONTHS[data.stats.worstMonth.month-1]} (${data.stats.worstMonth.pnl >= 0 ? '+' : ''}${data.stats.worstMonth.pnl}%)` : '—'} cls={data.stats.worstMonth && data.stats.worstMonth.pnl < 0 ? 'rn' : ''}/>
+            <StatBadge label="Win Rate" value={`${data.stats.winRate}%`} cls={data.stats.winRate > 50 ? 'rp' : ''}/>
+            <StatBadge label="Net PNL" value={`${data.stats.netPNL>=0?'+':''}${data.stats.netPNL}%`} cls={data.stats.netPNL > 0 ? 'rp' : 'rn'}/>
+            <StatBadge label="Max Loss Streak" value={data.stats.maxLossStreak} cls="rn"/>
           </div>
 
-          <div className="card" style={{padding:24}}>
-            <div className="card-title">Monthly PNL Breakdown ({year})</div>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(80px,1fr))',gap:12}}>
+          <div className="m-card">
+            <h3 style={{ fontSize: '14px', marginBottom: 16, color: 'var(--m-sub)', textTransform: 'uppercase', letterSpacing: '1px' }}>Monthly Breakdown</h3>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3, 1fr)',gap:8}}>
               {data.stats.monthlyBreakdown.map(m=>(
-                <div key={m.month} style={{textAlign:'center',padding:'12px 8px',borderRadius:12,backgroundColor:'#F8FAFC',border:'1px solid #E2E8F0'}}>
-                  <div style={{fontSize:12,fontWeight:700,color:'#64748B',marginBottom:4}}>{MONTHS[m.month-1]}</div>
-                  <div style={{fontSize:14,fontWeight:800,fontFamily:'JetBrains Mono'}} className={m.pnl>0?'rp':m.pnl<0?'rn':''}>
+                <div key={m.month} style={{textAlign:'center',padding:'12px 4px',borderRadius:16,backgroundColor:'rgba(255,255,255,0.03)',border:'1px solid var(--m-border)'}}>
+                  <div style={{fontSize:10,fontWeight:700,color:'var(--m-sub)',marginBottom:4}}>{MONTHS[m.month-1]}</div>
+                  <div style={{fontSize:13,fontWeight:800,fontFamily:'Outfit'}} className={m.pnl>0?'svG':m.pnl<0?'svR':''}>
                     {m.pnl>0?'+':''}{m.pnl}%
                   </div>
                 </div>
@@ -199,24 +214,22 @@ export function YearlyReports() {
             </div>
           </div>
 
-
-          <div className="card" style={{padding:0,overflow:'hidden'}}>
-            <table className="tbl">
-              <thead><tr><th>Date</th><th>Pair</th><th>Grade</th><th>Dir</th><th>Risk</th><th>Result</th><th>R:R</th><th>PNL</th></tr></thead>
-              <tbody>
-                {data.trades.map(t=>(
-                  <tr key={t.id} className={t.status === 'final' ? 'tr-final' : ''}>
-                    <td>{formatDate(t.date)}</td><td><strong>{t.pair}</strong></td>
-                    <td><span className={`pill ${t.grade==='A+'?'pAp':t.grade==='A'?'pB':'pLow'}`}>{t.grade}</span></td>
-                    <td>{t.direction}</td><td>{t.risk_percent}%</td>
-                    
-                    <td>{t.result?<span className={`pill ${t.result==='Win'?'pWin':t.result==='Loss'?'pLoss':'pBE'}`}>{t.result}</span>:'—'}</td>
-                    <td className="mono">{t.r_multiple?`${parseFloat(t.r_multiple).toFixed(2)}R`:'—'}</td>
-                    <td className={t.pnl_percentage>0?'rp':t.pnl_percentage<0?'rn':'mono'}>{t.pnl_percentage!=null?`${t.pnl_percentage>=0?'+':''}${parseFloat(t.pnl_percentage).toFixed(2)}%`:'—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ marginTop: 24 }}>
+            <h3 style={{ marginBottom: 16, fontSize: '16px', fontWeight: 700 }}>Full History</h3>
+            {data.trades.slice(0, 20).map(t=>(
+              <div key={t.id} className="m-card m-trade-card">
+                <div className="m-trade-info">
+                  <div className="m-trade-pair">{t.pair}</div>
+                  <div className="m-trade-date">{formatDate(t.date)}</div>
+                </div>
+                <div className="m-trade-result">
+                  <div className={`m-trade-profit ${t.pnl_percentage > 0 ? 'svG' : t.pnl_percentage < 0 ? 'svR' : ''}`}>
+                    {t.pnl_percentage != null ? `${t.pnl_percentage >= 0 ? '+' : ''}${parseFloat(t.pnl_percentage).toFixed(2)}%` : '—'}
+                  </div>
+                  {t.result && <span className={`m-pill ${t.result==='Win'?'m-pill-win':t.result==='Loss'?'m-pill-loss':'m-pill-be'}`} style={{ fontSize: '10px' }}>{t.result}</span>}
+                </div>
+              </div>
+            ))}
           </div>
         </>
       )}

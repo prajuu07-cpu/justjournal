@@ -7,37 +7,30 @@ import Dashboard from './pages/Dashboard';
 import NewTrade  from './pages/NewTrade';
 import Journal   from './pages/Journal';
 import { MonthlyReports, YearlyReports } from './pages/Reports';
-import './styles.css';
+import MobileNav from './components/MobileNav';
+import './mobile.css';
 
-// Light theme is forced by default in CSS now. No theme toggle required.
 function Protected({ children }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="loading full-page">Loading…</div>;
+  if (loading) return <div className="m-layout"><div className="loading">Loading…</div></div>;
   return user ? children : <Navigate to="/login" replace/>;
 }
 
-function Layout() {
+function MobileLayout() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
   const doLogout = () => { logout(); nav('/login'); };
 
   return (
-    <div className="layout">
-      <aside className="sidebar">
-        <div className="sidebar-logo">Trading Journal</div>
-        <nav className="sidebar-nav">
-          <NavLink to="/"             end className={({isActive})=>isActive?'nav-item active':'nav-item'}>Dashboard</NavLink>
-          <NavLink to="/new-trade"        className={({isActive})=>isActive?'nav-item active':'nav-item'}>New Trade</NavLink>
-          <NavLink to="/journal"          className={({isActive})=>isActive?'nav-item active':'nav-item'}>Journal</NavLink>
-          <NavLink to="/monthly"          className={({isActive})=>isActive?'nav-item active':'nav-item'}>Monthly</NavLink>
-          <NavLink to="/yearly"           className={({isActive})=>isActive?'nav-item active':'nav-item'}>Yearly</NavLink>
-        </nav>
-        <div className="sidebar-foot">
-          <div className="user-info">@{user?.username}</div>
-          <button className="btn btn-ghost btn-sm" onClick={doLogout}>Logout</button>
+    <div className="m-layout">
+      <header className="m-header">
+        <div className="m-header-logo">Trading<span>Journal</span></div>
+        <div className="m-header-profile" onClick={doLogout}>
+          {user?.username?.[0]?.toUpperCase()}
         </div>
-      </aside>
-      <main className="main-content">
+      </header>
+      
+      <main className="m-content">
         <Routes>
           <Route path="/"          element={<Dashboard/>}/>
           <Route path="/new-trade" element={<NewTrade/>}/>
@@ -47,6 +40,8 @@ function Layout() {
           <Route path="*"          element={<Navigate to="/" replace/>}/>
         </Routes>
       </main>
+
+      <MobileNav />
     </div>
   );
 }
@@ -58,7 +53,7 @@ export default function App() {
         <Routes>
           <Route path="/login"    element={<Login/>}/>
           <Route path="/register" element={<Register/>}/>
-          <Route path="/*" element={<Protected><Layout/></Protected>}/>
+          <Route path="/*" element={<Protected><MobileLayout/></Protected>}/>
         </Routes>
       </BrowserRouter>
     </AuthProvider>

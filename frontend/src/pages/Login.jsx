@@ -17,17 +17,53 @@ export default function Login() {
   };
 
   return (
-    <div className="auth-wrap">
-      <div className="auth-card">
-        <h1 className="auth-title">Trading Journal</h1>
-        <p className="auth-sub">Sign in to your account</p>
-        {err && <div className="err-box">{err}</div>}
-        <form onSubmit={submit}>
-          <div className="field"><label>Email</label><input type="email" autoFocus value={form.email} onChange={e=>setForm(p=>({...p,email:e.target.value}))} placeholder="you@example.com" required/></div>
-          <div className="field"><label>Password</label><input type="password" value={form.password} onChange={e=>setForm(p=>({...p,password:e.target.value}))} placeholder="••••••••" required/></div>
-          <button className="btn btn-primary btn-full" disabled={busy}>{busy?'Signing in…':'Sign In'}</button>
-        </form>
-        <p className="auth-switch">No account? <Link to="/register">Register</Link></p>
+    <div className="m-layout" style={{ justifyContent: 'center', paddingBottom: 0 }}>
+      <div className="m-content" style={{ width: '100%', maxWidth: '400px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 40, marginTop: 40 }}>
+          <h1 className="m-header-logo" style={{ fontSize: '36px', marginBottom: 8 }}>Trading Journal</h1>
+          <p style={{ color: 'var(--m-sub)', fontSize: '15px' }}>Master your psychology, track your progress.</p>
+        </div>
+
+        <div className="m-card" style={{ padding: '32px 24px' }}>
+          <h2 style={{ fontSize: '20px', marginBottom: 24, fontWeight: 700 }}>Welcome Back</h2>
+          
+          {err && <div className="err-box" style={{ borderRadius: '12px', marginBottom: 20 }}>{err}</div>}
+          
+          <form onSubmit={submit}>
+            <div className="field" style={{ marginBottom: 20 }}>
+              <label style={{ color: 'var(--m-sub)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>Email Address</label>
+              <input 
+                type="email" 
+                autoFocus 
+                value={form.email} 
+                onChange={e=>setForm(p=>({...p,email:e.target.value}))} 
+                placeholder="name@email.com" 
+                required
+                style={{ width: '100%', padding: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--m-border)', borderRadius: '12px', color: '#fff', fontSize: '15px' }}
+              />
+            </div>
+            <div className="field" style={{ marginBottom: 32 }}>
+              <label style={{ color: 'var(--m-sub)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>Password</label>
+              <input 
+                type="password" 
+                value={form.password} 
+                onChange={e=>setForm(p=>({...p,password:e.target.value}))} 
+                placeholder="••••••••" 
+                required
+                style={{ width: '100%', padding: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--m-border)', borderRadius: '12px', color: '#fff', fontSize: '15px' }}
+              />
+            </div>
+            <button className="m-glass-btn" style={{ width: '100%', padding: '16px', background: 'var(--m-primary)', borderColor: 'var(--m-primary)', fontSize: '16px' }} disabled={busy}>
+              {busy ? 'Verifying...' : 'Sign In'}
+            </button>
+          </form>
+
+          <div style={{ textAlign: 'center', marginTop: 32 }}>
+            <p style={{ color: 'var(--m-sub)', fontSize: '14px' }}>
+              Don't have an account? <Link to="/register" style={{ color: 'var(--m-primary)', fontWeight: 600, textDecoration: 'none' }}>Create One</Link>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

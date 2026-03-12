@@ -1,0 +1,28 @@
+# Node.js
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+.env
+frontend/.env
+frontend/vercel.json
+
+# Visual Studio Code
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*.class
+backend/__pycache__/
+backend/.env
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db

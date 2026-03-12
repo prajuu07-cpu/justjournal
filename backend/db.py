@@ -15,7 +15,9 @@ def get_db():
             raise ValueError("Missing MONGO_URI in environment variables. Please add your MongoDB connection string.")
         
         name = os.getenv("MONGO_DB_NAME", "trading_journal")
-        _client = MongoClient(uri, serverSelectionTimeoutMS=5000)
+        import certifi
+        ca = certifi.where()
+        _client = MongoClient(uri, serverSelectionTimeoutMS=5000, tlsCAFile=ca)
         # Verify connection
         _client.admin.command("ping")
         _db = _client[name]

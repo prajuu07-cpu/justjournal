@@ -79,8 +79,8 @@ export default function MobileChecklist() {
             style={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: 16, 
-              padding: 20,
+              gap: 12, 
+              padding: 12,
               borderColor: cl[i.key] ? 'var(--m-primary)' : 'var(--m-border)',
               background: cl[i.key] ? 'rgba(99, 102, 241, 0.05)' : 'var(--m-card)'
             }}
@@ -95,15 +95,16 @@ export default function MobileChecklist() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: cl[i.key] ? 'var(--m-primary)' : 'transparent'
+              background: cl[i.key] ? 'var(--m-primary)' : 'transparent',
+              flexShrink: 0
             }}>
               {cl[i.key] && <svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4.5l3.5 3.5L11 1" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{i.label}</div>
-              {i.optional && <div style={{ fontSize: '0.75rem', color: 'var(--m-text-muted)' }}>Optional</div>}
+              <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{i.label}</div>
+              {i.optional && <div style={{ fontSize: '0.7rem', color: 'var(--m-text-muted)' }}>Optional</div>}
             </div>
-            <div style={{ fontWeight: 800, color: 'var(--m-text-muted)' }}>{i.weight}</div>
+            <div style={{ fontWeight: 800, color: 'var(--m-text-muted)', marginLeft: 'auto', fontSize: '0.85rem' }}>{i.weight}pts</div>
           </div>
         ))}
       </div>

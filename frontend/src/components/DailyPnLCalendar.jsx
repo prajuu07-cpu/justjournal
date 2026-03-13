@@ -144,6 +144,7 @@ export default function DailyPnLCalendar({ year, month, dailyBreakdown = {} }) {
                       <th>Type</th>
                       <th>Risk</th>
                       <th>Result</th>
+                      <th>RR</th>
                       <th>PnL</th>
                     </tr>
                   </thead>
@@ -163,6 +164,9 @@ export default function DailyPnLCalendar({ year, month, dailyBreakdown = {} }) {
                           <span className={`dpnl-pill dpnl-pill--${(t.result || '').toLowerCase()}`}>
                             {t.result || '—'}
                           </span>
+                        </td>
+                        <td className="dpnl-mono">
+                          {t.r_multiple != null ? `${parseFloat(t.r_multiple).toFixed(2)}R` : '—'}
                         </td>
                         <td>
                           <span className={t.pnl > 0 ? 'dpnl-up' : t.pnl < 0 ? 'dpnl-dn' : 'dpnl-zero'}>

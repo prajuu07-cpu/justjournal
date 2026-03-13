@@ -477,6 +477,7 @@ def get_month_trades(year, month):
             "direction":    t.get("direction"),
             "pnl":          pnl_v,
             "risk_percent": t.get("risk_percent"),
+            "r_multiple":   t.get("r_multiple"),
             "grade":        t.get("grade"),
             "result":       t.get("result"),
         })

@@ -471,14 +471,14 @@ def get_month_trades(year, month):
         daily_breakdown[d_str]["net_pnl"]     = round(daily_breakdown[d_str]["net_pnl"] + pnl_v, 4)
         daily_breakdown[d_str]["trade_count"] += 1
         daily_breakdown[d_str]["trades"].append({
-            "id":         str(t.get("_id")),
-            "pair":       t.get("pair"),
-            "model":      t.get("model"),
-            "direction":  t.get("direction"),
-            "pnl":        pnl_v,
-            "r_multiple": t.get("r_multiple"),
-            "grade":      t.get("grade"),
-            "result":     t.get("result"),
+            "id":           str(t.get("_id")),
+            "pair":         t.get("pair"),
+            "model":        t.get("model"),
+            "direction":    t.get("direction"),
+            "pnl":          pnl_v,
+            "risk_percent": t.get("risk_percent"),
+            "grade":        t.get("grade"),
+            "result":       t.get("result"),
         })
 
     return jsonify(

@@ -142,9 +142,9 @@ export default function DailyPnLCalendar({ year, month, dailyBreakdown = {} }) {
                     <tr>
                       <th>Pair</th>
                       <th>Type</th>
-                      <th>PnL</th>
-                      <th>R</th>
+                      <th>Risk</th>
                       <th>Result</th>
+                      <th>PnL</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -156,16 +156,16 @@ export default function DailyPnLCalendar({ year, month, dailyBreakdown = {} }) {
                             {t.direction}
                           </span>
                         </td>
-                        <td className={t.pnl > 0 ? 'dpnl-up' : t.pnl < 0 ? 'dpnl-dn' : ''}>
-                          {t.pnl > 0 ? '+' : ''}{parseFloat(t.pnl || 0).toFixed(2)}%
-                        </td>
                         <td className="dpnl-mono">
-                          {t.r_multiple != null ? `${parseFloat(t.r_multiple).toFixed(2)}R` : '—'}
+                          {t.risk_percent != null ? `${t.risk_percent}%` : '—'}
                         </td>
                         <td>
                           <span className={`dpnl-pill dpnl-pill--${(t.result || '').toLowerCase()}`}>
                             {t.result || '—'}
                           </span>
+                        </td>
+                        <td className={t.pnl > 0 ? 'dpnl-up' : t.pnl < 0 ? 'dpnl-dn' : ''}>
+                          {t.pnl > 0 ? '+' : ''}{parseFloat(t.pnl || 0).toFixed(2)}%
                         </td>
                       </tr>
                     ))}
@@ -174,14 +174,6 @@ export default function DailyPnLCalendar({ year, month, dailyBreakdown = {} }) {
               ) : (
                 <p className="dpnl-empty">No trade details available.</p>
               )}
-
-              {/* Summary */}
-              <div className="dpnl-modal-sum">
-                <span>Total: <strong>{modalData.trade_count}</strong> trade{modalData.trade_count !== 1 ? 's' : ''}</span>
-                <span className={modalData.net_pnl > 0 ? 'dpnl-up' : modalData.net_pnl < 0 ? 'dpnl-dn' : ''}>
-                  Net PnL: <strong>{modalData.net_pnl > 0 ? '+' : ''}{modalData.net_pnl.toFixed(2)}%</strong>
-                </span>
-              </div>
             </div>
           </div>
         </div>

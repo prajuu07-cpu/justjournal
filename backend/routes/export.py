@@ -7,6 +7,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from bson import ObjectId
 from datetime import datetime, timezone, timedelta
 import io
+import calendar
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -51,6 +52,24 @@ S_MONO   = ParagraphStyle("ep_mono",   fontName="Courier",        fontSize=8,  t
 S_HDR    = ParagraphStyle("ep_hdr",    fontName="Helvetica-Bold", fontSize=8,  textColor=colors.white, leading=12)
 S_STAT_L = ParagraphStyle("ep_stat_l", fontName="Helvetica",      fontSize=7,  textColor=C_SUB,    leading=10)
 S_FOOT   = ParagraphStyle("ep_foot",   fontName="Helvetica",      fontSize=7,  textColor=C_SUB,    leading=10, alignment=TA_CENTER)
+
+# ── Grid cell styles (calendar + monthly breakdown) ───────────────────────────
+S_CAL_HDR = ParagraphStyle("ep_cal_hdr", fontName="Helvetica-Bold", fontSize=7,  textColor=colors.white, leading=9,  alignment=TA_CENTER)
+S_CAL_DAY = ParagraphStyle("ep_cal_day", fontName="Helvetica-Bold", fontSize=8,  textColor=C_DARK,       leading=10)
+S_CAL_CNT = ParagraphStyle("ep_cal_cnt", fontName="Helvetica",      fontSize=6,  textColor=C_SUB,        leading=8,  alignment=TA_CENTER)
+S_MB_MON  = ParagraphStyle("ep_mb_mon",  fontName="Helvetica-Bold", fontSize=8,  textColor=C_SUB,        leading=10, alignment=TA_CENTER)
+
+# Per-colour PNL style cache for grid cells
+_GRID_PNL_STYLES: dict = {}
+
+def _gpnl(color_val, style_id):
+    key = f"{style_id}_{color_val.hexval()}"
+    if key not in _GRID_PNL_STYLES:
+        _GRID_PNL_STYLES[key] = ParagraphStyle(
+            f"ep_gpnl_{key}", fontName="Helvetica-Bold",
+            fontSize=7, textColor=color_val, leading=9, alignment=TA_CENTER,
+        )
+    return _GRID_PNL_STYLES[key]
 
 # Stat value styles — cached by colour hex so we never create duplicate names
 _SV_STYLES: dict = {}
@@ -121,15 +140,101 @@ def _stat_box(label, value, val_color, col_w):
     )
 
 
+# ── Daily PnL Calendar grid ───────────────────────────────────────────────────
+def _build_daily_calendar(year: int, month: int, daily_breakdown: dict, width: float) -> Table:
+    """Returns a professional 7-col equal-block calendar table."""
+    DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    col_w  = width / 7
+    cell_h = 18 * mm   # fixed height — every cell identical
+
+    header_row = [_p(d, S_CAL_HDR) for d in DAY_NAMES]
+    data = [header_row]
+    ts   = [
+        ("BACKGROUND",    (0, 0), (-1, 0),  C_DARK),
+        ("GRID",          (0, 0), (-1, -1), 0.4, C_BORDER),
+        ("ALIGN",         (0, 0), (-1, -1), "CENTER"),
+        ("VALIGN",        (0, 0), (-1, 0),  "MIDDLE"),
+        ("VALIGN",        (0, 1), (-1, -1), "TOP"),
+        ("TOPPADDING",    (0, 0), (-1, 0),  3),
+        ("BOTTOMPADDING", (0, 0), (-1, 0),  3),
+        ("TOPPADDING",    (0, 1), (-1, -1), 3),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 2),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 2),
+    ]
+
+    cal_weeks = calendar.monthcalendar(year, month)
+    C_POS_BG  = colors.HexColor("#F0FDF4")
+    C_NEG_BG  = colors.HexColor("#FEF2F2")
+    C_NEU_BG  = colors.HexColor("#F8FAFC")
+
+    for r_idx, week in enumerate(cal_weeks, start=1):
+        row = []
+        for c_idx, day in enumerate(week):
+            if day == 0:
+                row.append("")
+            else:
+                date_str = f"{year}-{month:02d}-{day:02d}"
+                info = daily_breakdown.get(date_str)
+                cell = [_p(str(day), S_CAL_DAY)]
+                if info:
+                    pnl   = float(info.get("net_pnl", 0))
+                    cnt   = int(info.get("trade_count", 0))
+                    pnl_c = C_WIN if pnl > 0 else (C_LOSS if pnl < 0 else C_DARK)
+                    bg    = C_POS_BG if pnl > 0 else (C_NEG_BG if pnl < 0 else C_NEU_BG)
+                    cell.append(_p(("+" if pnl > 0 else "") + f"{pnl:.2f}%", _gpnl(pnl_c, date_str)))
+                    cell.append(_p(f"({cnt} trade{'s' if cnt != 1 else ''})", S_CAL_CNT))
+                    ts.append(("BACKGROUND", (c_idx, r_idx), (c_idx, r_idx), bg))
+                row.append(cell)
+        data.append(row)
+
+    row_heights = [6 * mm] + [cell_h] * len(cal_weeks)
+    return Table(data, colWidths=[col_w] * 7, rowHeights=row_heights, style=TableStyle(ts))
+
+
+# ── Monthly PnL 4x3 grid ──────────────────────────────────────────────────────
+def _build_monthly_grid(monthly_breakdown: list, width: float) -> Table:
+    """Returns a 4-column x 3-row equal-block monthly PnL grid."""
+    col_w  = width / 4
+    cell_h = 16 * mm
+    C_POS_BG = colors.HexColor("#F0FDF4")
+    C_NEG_BG = colors.HexColor("#FEF2F2")
+    C_NEU_BG = colors.HexColor("#F8FAFC")
+
+    data = []
+    ts   = [
+        ("GRID",          (0, 0), (-1, -1), 0.4, C_BORDER),
+        ("ALIGN",         (0, 0), (-1, -1), "CENTER"),
+        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING",    (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 2),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 2),
+    ]
+
+    for i in range(0, 12, 4):
+        row = []
+        for j in range(4):
+            m     = monthly_breakdown[i + j]
+            pnl   = float(m.get("pnl", 0))
+            pnl_c = C_WIN if pnl > 0 else (C_LOSS if pnl < 0 else C_DARK)
+            bg    = C_POS_BG if pnl > 0 else (C_NEG_BG if pnl < 0 else C_NEU_BG)
+            row.append([_p(MONTHS[m["month"] - 1], S_MB_MON),
+                        _p(("+" if pnl > 0 else "") + f"{pnl:.2f}%", _gpnl(pnl_c, f"mb_{i+j}"))])
+            ts.append(("BACKGROUND", (j, i // 4), (j, i // 4), bg))
+        data.append(row)
+
+    return Table(data, colWidths=[col_w] * 4, rowHeights=[cell_h] * 3, style=TableStyle(ts))
+
+
 # ── Monthly PDF builder ───────────────────────────────────────────────────────
 def _build_month_pdf(username: str, year: int, month: int,
                      stats: dict, trades: list) -> bytes:
-    buf = io.BytesIO()
+    刻 = io.BytesIO()
     W   = A4[0] - 32 * mm
     month_name = MONTHS[month - 1]
 
     doc = SimpleDocTemplate(
-        buf, pagesize=A4,
+        刻, pagesize=A4,
         leftMargin=16*mm, rightMargin=16*mm,
         topMargin=16*mm,  bottomMargin=16*mm,
         title=f"Trading Journal Performance \u2013 {month_name} {year}",
@@ -187,6 +292,11 @@ def _build_month_pdf(username: str, year: int, month: int,
     ))
     story.append(Spacer(1, 5 * mm))
 
+    # Daily PnL Calendar
+    story.append(_p(f"Daily PnL Breakdown \u2013 {month_name} {year}", S_SEC))
+    story.append(_build_daily_calendar(year, month, s.get("dailyBreakdown", {}), W))
+    story.append(Spacer(1, 6 * mm))
+
     if trades:
         story.append(_p(f"Trades \u2013 {month_name} {year}", S_SEC))
         t_headers = ["Date", "Pair", "Model", "Dir", "Risk%", "Grade", "Result", "R:R", "PNL%"]
@@ -238,17 +348,17 @@ def _build_month_pdf(username: str, year: int, month: int,
 
 
     doc.build(story)
-    return buf.getvalue()
+    return 刻.getvalue()
 
 
 # ── Yearly PDF builder ────────────────────────────────────────────────────────
 def _build_year_pdf(username: str, year: int,
                     stats: dict, trades: list, monthly_breakdown: list) -> bytes:
-    buf = io.BytesIO()
+    刻 = io.BytesIO()
     W   = A4[0] - 32 * mm
 
     doc = SimpleDocTemplate(
-        buf, pagesize=A4,
+        刻, pagesize=A4,
         leftMargin=16*mm, rightMargin=16*mm,
         topMargin=16*mm,  bottomMargin=16*mm,
         title=f"Trading Journal Performance \u2013 {year}",
@@ -311,32 +421,11 @@ def _build_year_pdf(username: str, year: int,
     ))
     story.append(Spacer(1, 5 * mm))
 
-    # Monthly PNL breakdown
+    # Monthly PNL breakdown — professional equal-block 4x3 grid
     if monthly_breakdown:
         story.append(_p(f"Monthly PNL Breakdown \u2013 {year}", S_SEC))
-        mb_headers = ["Month", "Net PNL"]
-        mb_col_ws  = [40*mm, 40*mm]
-        mb_rows    = [[_p(h, S_HDR) for h in mb_headers]]
-        for m in monthly_breakdown:
-            pnl = m.get("pnl", 0)
-            mb_rows.append([
-                _p(MONTHS[m["month"] - 1], S_CELL_B),
-                _p(_pf(pnl, "%"), S_MONO),
-            ])
-        mb_ts = TableStyle([
-            ("BACKGROUND",    (0, 0),  (-1, 0),  C_DARK),
-            ("ROWBACKGROUNDS",(0, 1),  (-1, -1), [colors.white, C_CARD]),
-            ("GRID",          (0, 0),  (-1, -1), 0.3, C_BORDER),
-            ("VALIGN",        (0, 0),  (-1, -1), "MIDDLE"),
-            ("TOPPADDING",    (0, 0),  (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0),  (-1, -1), 4),
-            ("LEFTPADDING",   (0, 0),  (-1, -1), 3),
-            ("RIGHTPADDING",  (0, 0),  (-1, -1), 3),
-        ])
-        for i, m in enumerate(monthly_breakdown, 1):
-            mb_ts.add("TEXTCOLOR", (1, i), (1, i), C_WIN if m.get("pnl", 0) >= 0 else C_LOSS)
-        story.append(Table(mb_rows, colWidths=mb_col_ws, repeatRows=1, style=mb_ts))
-        story.append(Spacer(1, 5 * mm))
+        story.append(_build_monthly_grid(monthly_breakdown, W))
+        story.append(Spacer(1, 6 * mm))
 
     # Trade log
     if trades:
@@ -390,7 +479,7 @@ def _build_year_pdf(username: str, year: int,
 
 
     doc.build(story)
-    return buf.getvalue()
+    return 刻.getvalue()
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -434,11 +523,24 @@ def export_month_pdf(year, month):
     # Win-Only Avg RR for Header (using Isolated Compute Layer)
     avg_rr = calculate_avg_rr(trades)
 
+    # Daily PnL breakdown grouped by date (for calendar)
+    daily_breakdown: dict = {}
+    for t in trades:
+        d_str = (t.get("date") or "")[:10]
+        if not d_str:
+            continue
+        pnl_v = _sf(t.get("pnl_percentage"))
+        if d_str not in daily_breakdown:
+            daily_breakdown[d_str] = {"net_pnl": 0.0, "trade_count": 0}
+        daily_breakdown[d_str]["net_pnl"]     = round(daily_breakdown[d_str]["net_pnl"] + pnl_v, 4)
+        daily_breakdown[d_str]["trade_count"] += 1
+
     stats = dict(
         totalTrades=total, wins=wins, losses=losses,
         winRate=win_rate, netPNL=net_pnl,
         maxLossStreak=max_streak,
-        avgRR=avg_rr
+        avgRR=avg_rr,
+        dailyBreakdown=daily_breakdown
     )
 
     pdf_bytes = _build_month_pdf(username, year, month, stats, trades)

@@ -17,9 +17,15 @@ def get_db():
         name = os.getenv("MONGO_DB_NAME", "trading_journal")
         import certifi
         ca = certifi.where()
-        _client = MongoClient(uri, serverSelectionTimeoutMS=5000, tlsCAFile=ca)
-        # Verify connection
-        _client.admin.command("ping")
+        _client = MongoClient(
+            uri, 
+            serverSelectionTimeoutMS=5000, 
+            tlsCAFile=ca,
+            maxPoolSize=50,
+            minPoolSize=5,
+            retryWrites=True
+        )
+        # Avoid blocking ping on every get_db call to speed up initial requests
         _db = _client[name]
         _ensure_indexes(_db)
     return _db

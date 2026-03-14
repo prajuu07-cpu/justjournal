@@ -8,6 +8,9 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Proactively "warm up" the backend to handle potential cold starts
+    api.get('/health').catch(() => {});
+
     if (localStorage.getItem('tjp_token')) {
       api.get('/auth/me').then(r => setUser(r.data.user)).catch(() => localStorage.removeItem('tjp_token')).finally(() => setLoading(false));
     } else setLoading(false);

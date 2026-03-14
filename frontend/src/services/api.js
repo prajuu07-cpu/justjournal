@@ -4,7 +4,7 @@ import axios from 'axios';
 // In prod: set VITE_API_URL=https://your-backend.onrender.com/api
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
-  timeout: 15000,
+  timeout: 60000,
 });
 
 api.interceptors.request.use(cfg => {

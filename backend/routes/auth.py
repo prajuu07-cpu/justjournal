@@ -52,7 +52,7 @@ def register():
     doc["_id"] = result.inserted_id
     token = create_access_token(
         identity=str(result.inserted_id),
-        expires_delta=timedelta(days=7),
+        expires_delta=timedelta(days=365),
     )
     return jsonify(token=token, user=_user_out(doc)), 201
 
@@ -73,7 +73,7 @@ def login():
 
     token = create_access_token(
         identity=str(doc["_id"]),
-        expires_delta=timedelta(days=7),
+        expires_delta=timedelta(days=365),
     )
     return jsonify(token=token, user=_user_out(doc))
 

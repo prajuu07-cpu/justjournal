@@ -39,6 +39,8 @@ C_BE     = colors.HexColor("#3B82F6")
 C_DRAFT  = colors.HexColor("#F59E0B")
 C_ORANGE = colors.HexColor("#ea580c")
 C_L_ORANGE = colors.HexColor("#f97316")
+C_WIN_DARK  = colors.HexColor("#052e16")
+C_LOSS_DARK = colors.HexColor("#450a0a")
 
 MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
@@ -65,9 +67,10 @@ _GRID_PNL_STYLES: dict = {}
 def _gpnl(color_val, style_id):
     key = f"{style_id}_{color_val.hexval()}"
     if key not in _GRID_PNL_STYLES:
+        # Significantly increased font size to 15 for maximum visibility
         _GRID_PNL_STYLES[key] = ParagraphStyle(
             f"ep_gpnl_{key}", fontName="Helvetica-Bold",
-            fontSize=7, textColor=color_val, leading=9, alignment=TA_CENTER,
+            fontSize=15, textColor=color_val, leading=18, alignment=TA_CENTER,
         )
     return _GRID_PNL_STYLES[key]
 
@@ -157,7 +160,8 @@ def _build_daily_calendar(year: int, month: int, daily_breakdown: dict, width: f
         ("VALIGN",        (0, 1), (-1, -1), "TOP"),
         ("TOPPADDING",    (0, 0), (-1, 0),  3),
         ("BOTTOMPADDING", (0, 0), (-1, 0),  3),
-        ("TOPPADDING",    (0, 1), (-1, -1), 3),
+        ("TOPPADDING",    (0, 1), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 4),
         ("LEFTPADDING",   (0, 0), (-1, -1), 2),
         ("RIGHTPADDING",  (0, 0), (-1, -1), 2),
     ]
@@ -205,8 +209,8 @@ def _build_monthly_grid(monthly_breakdown: list, width: float) -> Table:
         ("GRID",          (0, 0), (-1, -1), 0.4, C_BORDER),
         ("ALIGN",         (0, 0), (-1, -1), "CENTER"),
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING",    (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING",    (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
         ("LEFTPADDING",   (0, 0), (-1, -1), 2),
         ("RIGHTPADDING",  (0, 0), (-1, -1), 2),
     ]

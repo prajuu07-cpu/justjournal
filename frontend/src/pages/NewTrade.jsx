@@ -236,7 +236,7 @@ export default function NewTrade({ editTrade, onDone }) {
                 <div key={m.name} style={{display:'flex', alignItems:'center', position:'relative'}}>
                   <button 
                     className={`mbtn ${model === m.name ? (m.name === 'Model 1' ? 'sel-m1' : 'sel-m2') : ''}`}
-                    style={{padding: '6px 12px', fontSize: '0.85rem', paddingRight: m._id ? '28px' : '12px'}}
+                    style={{padding: '6px 12px', fontSize: '0.85rem'}}
                     onClick={() => {
                       setModel(m.name);
                       if (m.notes && !notes) setNotes(m.notes);
@@ -244,19 +244,6 @@ export default function NewTrade({ editTrade, onDone }) {
                   >
                     {m.name}
                   </button>
-                  {m._id && !m.isHistorical && (
-                    <button 
-                      className="del-model-btn"
-                      onClick={(e) => { e.stopPropagation(); handleDeleteModel(m); }}
-                      style={{
-                        position:'absolute', right:4, background:'none', border:'none', 
-                        color: model === m.name ? 'rgba(255,255,255,0.8)' : '#e11d48', cursor:'pointer', fontSize:'0.72rem',
-                        padding: '2px'
-                      }}
-                    >
-                      ✕
-                    </button>
-                  )}
                 </div>
               ))}
             </div>
@@ -270,6 +257,21 @@ export default function NewTrade({ editTrade, onDone }) {
               </button>
             )}
           </div>
+          {modelBadges.find(m => m.name === model && m._id && !m.isHistorical) && (
+            <div style={{marginTop: '12px', borderTop: '1px solid #f1f5f9', paddingTop: '8px'}}>
+              <button 
+                className="del-model-btn" 
+                onClick={() => handleDeleteModel(modelBadges.find(m => m.name === model))}
+                style={{
+                  color: '#e11d48', fontSize: '0.85rem', fontWeight: 600, 
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '4px'
+                }}
+              >
+                🗑 Delete {model}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

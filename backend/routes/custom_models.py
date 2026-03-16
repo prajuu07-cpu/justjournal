@@ -28,6 +28,7 @@ def create_custom_model():
     
     name = data.get('name', '').strip()
     checklist = data.get('checklist', [])
+    notes = data.get('notes', '').strip()
     created_from = data.get('createdFrom', 'practice')
 
     if not name:
@@ -39,6 +40,7 @@ def create_custom_model():
         "user_id": uid,
         "name": name,
         "checklist": checklist,
+        "notes": notes,
         "createdFrom": created_from,
         "created_at": _now_iso()
     }

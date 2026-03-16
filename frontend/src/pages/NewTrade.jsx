@@ -229,7 +229,10 @@ export default function NewTrade({ editTrade, onDone }) {
                   <button 
                     className={`mbtn ${model === m.name ? (m.name === 'Model 1' ? 'sel-m1' : 'sel-m2') : ''}`}
                     style={{padding: '6px 12px', fontSize: '0.85rem', paddingRight: m._id ? '28px' : '12px'}}
-                    onClick={() => setModel(m.name)}
+                    onClick={() => {
+                      setModel(m.name);
+                      if (m.notes && !notes) setNotes(m.notes);
+                    }}
                   >
                     {m.name}
                   </button>

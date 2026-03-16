@@ -9,6 +9,7 @@ export default function ModelBuilder() {
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [checklist, setChecklist] = useState([]);
+  const [modelNotes, setModelNotes] = useState('');
   const [newItem, setNewItem] = useState({ label: '', weight: '', notes: '' });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -48,6 +49,7 @@ export default function ModelBuilder() {
       const { data } = await api.post('/custom-models', {
         name: name.trim(),
         checklist: checklist,
+        notes: modelNotes.trim(),
         createdFrom: 'practice'
       });
       addModel(data);
@@ -112,50 +114,75 @@ export default function ModelBuilder() {
 
       <div className="card">
         <div className="form-sec">Checklist Builder — {name}</div>
-        <div className="checklist-entry" style={{display:'flex', flexDirection:'column', gap:8, marginBottom: '1.5rem'}}>
-          <div style={{display:'flex', gap:8}}>
-            <input 
-              style={{flex:3}}
-              value={newItem.label} 
-              onChange={e => setNewItem({...newItem, label: e.target.value})} 
-              placeholder="Checklist Item Label (e.g. Daily Bias)"
-              onKeyDown={e => e.key === 'Enter' && addItem()}
-            />
-            <input 
-              style={{flex:1}}
-              type="number"
-              value={newItem.weight} 
-              onChange={e => setNewItem({...newItem, weight: e.target.value})} 
-              placeholder="Points"
-            />
+        <div className="checklist-entry" style={{display:'flex', flexDirection:'column', gap:12, marginBottom: '2rem', padding: '16px', background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0'}}>
+          <div style={{display:'flex', gap:10}}>
+            <div className="field" style={{flex:3}}>
+              <label style={{fontSize: '0.75rem', color: '#64748b'}}>Item Label *</label>
+              <input 
+                value={newItem.label} 
+                onChange={e => setNewItem({...newItem, label: e.target.value})} 
+                placeholder="e.g. Daily TP Reached"
+                onKeyDown={e => e.key === 'Enter' && addItem()}
+                style={{background: '#fff'}}
+              />
+            </div>
+            <div className="field" style={{flex:1}}>
+              <label style={{fontSize: '0.75rem', color: '#64748b'}}>Points *</label>
+              <input 
+                type="number"
+                value={newItem.weight} 
+                onChange={e => setNewItem({...newItem, weight: e.target.value})} 
+                placeholder="pts"
+                style={{background: '#fff'}}
+              />
+            </div>
           </div>
-          <div style={{display:'flex', gap:8}}>
-            <input 
-              style={{flex:1}}
+          <div className="field">
+            <label style={{fontSize: '0.75rem', color: '#64748b'}}>Description / Notes (Optional)</label>
+            <textarea 
               value={newItem.notes} 
               onChange={e => setNewItem({...newItem, notes: e.target.value})} 
-              placeholder="Notes/Description (optional)"
+              placeholder="Explain the criteria for this rule..."
+              rows={2}
+              style={{background: '#fff', fontSize: '0.9rem', resize: 'vertical'}}
             />
-            <button className="btn btn-ghost" onClick={addItem}>Add</button>
           </div>
+          <button className="btn btn-ok" onClick={addItem} style={{width:'100%'}}>+ Add to Checklist</button>
         </div>
 
         <div className="checklist-preview">
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 12}}>
+            <div style={{fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase'}}>Current Checklist</div>
+            <div style={{fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary)'}}>Total: {checklist.reduce((s,i)=>s+i.weight, 0)} pts</div>
+          </div>
           {checklist.map((item, i) => (
-            <div key={i} className="ci" style={{display:'flex', flexDirection:'column', gap:4, padding: '12px', border: '1px solid #eee', borderRadius: 8, marginBottom: 8}}>
+            <div key={i} className="ci-card" style={{display:'flex', flexDirection:'column', gap:6, padding: '14px', border: '1px solid #e2e8f0', borderRadius: 12, marginBottom: 10, background: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'}}>
               <div style={{display:'flex', alignItems:'center', gap:10}}>
-                <div style={{flex:1, fontWeight:600}}>{item.label}</div>
-                <div style={{fontSize:'0.85rem', color:'var(--primary)', fontWeight:700}}>{item.weight} pts</div>
+                <div style={{flex:1, fontWeight:700, fontSize: '0.95rem'}}>{item.label}</div>
+                <div style={{fontSize:'0.85rem', color:'var(--primary)', fontWeight:800, background: 'var(--bg)', padding: '4px 8px', borderRadius: 6}}>{item.weight} pts</div>
                 <div style={{display:'flex', gap:4}}>
                   <button className="btn-icon" onClick={() => moveItem(i, -1)} disabled={i===0}>↑</button>
                   <button className="btn-icon" onClick={() => moveItem(i, 1)} disabled={i===checklist.length-1}>↓</button>
                   <button className="btn-icon" style={{color: '#e11d48'}} onClick={() => removeItem(i)}>🗑</button>
                 </div>
               </div>
-              {item.notes && <div style={{fontSize:'0.8rem', color:'#666', fontStyle:'italic'}}>{item.notes}</div>}
+              {item.notes && <div style={{fontSize:'0.8rem', color:'#64748b', fontStyle:'italic', borderTop: '1px solid #f1f5f9', paddingTop: 6, marginTop: 2}}>{item.notes}</div>}
             </div>
           ))}
-          {checklist.length === 0 && <div style={{textAlign:'center', color:'#999', padding:'20px'}}>No items added yet</div>}
+          {checklist.length === 0 && <div style={{textAlign:'center', color:'#999', padding:'40px', background: '#f8fafc', borderRadius: 12, border: '2px dashed #e2e8f0'}}>No items added yet</div>}
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="form-sec">General Model Notes</div>
+        <div className="field" style={{marginBottom: 0}}>
+          <textarea 
+            value={modelNotes} 
+            onChange={e => setModelNotes(e.target.value)} 
+            placeholder="Default notes that will appear when this model is selected..."
+            rows={3}
+            style={{resize:'vertical', fontSize: '0.9rem'}}
+          />
         </div>
       </div>
     </div>

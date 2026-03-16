@@ -185,12 +185,19 @@ export default function NewTrade({ editTrade, onDone }) {
   };
 
   const modelBadges = useMemo(() => {
+    let list = [];
     if (mode === 'practice') {
-      return [{name: 'Practice'}, ...customModels];
+      list = [{name: 'Practice'}, ...customModels];
     } else {
-      return [{name: 'Model 1'}, {name: 'Model 2'}, ...customModels];
+      list = [{name: 'Model 1'}, {name: 'Model 2'}, ...customModels];
     }
-  }, [mode, customModels]);
+    
+    // Add current model if it's missing (deleted/historical)
+    if (model && !list.find(m => m.name === model)) {
+      list.push({ name: model, isHistorical: true });
+    }
+    return list;
+  }, [mode, customModels, model]);
 
   return (
     <div className="page">
@@ -237,7 +244,7 @@ export default function NewTrade({ editTrade, onDone }) {
                   >
                     {m.name}
                   </button>
-                  {m._id && (
+                  {m._id && !m.isHistorical && (
                     <button 
                       className="del-model-btn"
                       onClick={(e) => { e.stopPropagation(); handleDeleteModel(m); }}

@@ -14,7 +14,7 @@ def _now_iso():
 def get_custom_models():
     uid = ObjectId(get_jwt_identity())
     db = get_db()
-    models = list(db.custom_models.find({"user_id": uid}))
+    models = list(db.custom_models.find({"user_id": uid, "is_deleted": {"$ne": True}}))
     for m in models:
         m['_id'] = str(m['_id'])
     return jsonify(models)
@@ -61,7 +61,10 @@ def delete_custom_model(model_id):
     except:
         return jsonify(error="Invalid model ID"), 400
 
-    result = db.custom_models.delete_one({"_id": oid, "user_id": uid})
+    result = db.custom_models.update_one(
+        {"_id": oid, "user_id": uid},
+        {"$set": {"is_deleted": True, "deleted_at": _now_iso()}}
+    )
     
     if result.deleted_count == 0:
         return jsonify(error="Model not found"), 404

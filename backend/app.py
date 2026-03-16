@@ -45,11 +45,13 @@ from routes.auth    import auth_bp
 from routes.trades  import trades_bp
 from routes.reports import reports_bp
 from routes.export  import export_bp
+from routes.custom_models import custom_models_bp
 
 app.register_blueprint(auth_bp,    url_prefix="/api/auth")
 app.register_blueprint(trades_bp,  url_prefix="/api/trades")
 app.register_blueprint(reports_bp, url_prefix="/api/reports")
 app.register_blueprint(export_bp,  url_prefix="/api/export")
+app.register_blueprint(custom_models_bp, url_prefix="/api/custom-models")
 
 @app.get("/health")
 def health():

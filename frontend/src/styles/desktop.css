@@ -295,3 +295,27 @@ select option{background:var(--card)}
   /* Suppress the original simple responsive rules that conflicted */
   .sidebar { position: fixed; height: 100vh; }
 }
+
+/* ── Model Builder Extras ─────────────────────────────────────── */
+.btn-icon {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--sub);
+  transition: all 0.15s;
+}
+.btn-icon:hover:not(:disabled) { background: var(--card2); color: var(--text); }
+.btn-icon:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.del-model-btn { opacity: 0.6; transition: opacity 0.15s; }
+.del-model-btn:hover { opacity: 1; }
+
+.w100 { width: 100%; }
+

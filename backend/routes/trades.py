@@ -46,11 +46,30 @@ def _now_iso() -> str:
 
 
 
-def _calc_score(model: str, cl: dict) -> int:
-    if model == "Practice Model":
-        return 100
-    weights = MODEL1_WEIGHTS if model == "Model 1" else MODEL2_WEIGHTS
-    return sum(w for k, w in weights.items() if cl.get(k))
+def _calc_score(model: str, cl: dict, uid: Optional[ObjectId] = None) -> int:
+    if model == "Practice":
+        return 0
+    if model == "Model 1":
+        return sum(MODEL1_WEIGHTS[k] for k, v in cl.items() if v and k in MODEL1_WEIGHTS)
+    if model == "Model 2":
+        return sum(MODEL2_WEIGHTS[k] for k, v in cl.items() if v and k in MODEL2_WEIGHTS)
+    
+    # Custom model lookup
+    if uid:
+        db = get_db()
+        custom = db.custom_models.find_one({"user_id": uid, "name": model})
+        if custom and custom.get("checklist"):
+            items = custom["checklist"]
+            if not items: return 0
+            # Equal weight distribution for custom models
+            weight = 100 / len(items)
+            score = 0
+            for item in items:
+                if cl.get(item):
+                    score += weight
+            return int(round(score))
+            
+    return 0
 
 def _calc_grade(score: int) -> str:
     return "A+" if score >= 90 else "A" if score >= 75 else "Draft"
@@ -158,13 +177,14 @@ def create_trade():
     if mode == "justchill" and model not in ("Model 1", "Model 2"):
         return jsonify(error="Model must be 'Model 1' or 'Model 2' for JustChill mode."), 400
     if mode == "practice":
-        model = "Practice Model"
+        if not model or model == "Practice Model":
+            model = "Practice"
     if direction not in ("Buy", "Sell"):
         return jsonify(error="Direction must be Buy or Sell"), 400
     if status not in ("draft", "final"):
         return jsonify(error="Status must be 'draft' or 'final'"), 400
 
-    score = _calc_score(model, checklist)
+    score = _calc_score(model, checklist, uid)
     grade = _calc_grade(score)
 
     result: Optional[str]  = None
@@ -285,7 +305,7 @@ def update_trade(trade_id):
     except (TypeError, ValueError, AssertionError):
         return jsonify(error="Risk % must be between 0.01 and 5"), 400
 
-    score = _calc_score(model, checklist)
+    score = _calc_score(model, checklist, uid)
     grade = _calc_grade(score)
 
     result     = existing.get("result")

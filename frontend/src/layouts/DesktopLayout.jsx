@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import Dashboard from '../pages/Dashboard';
 import NewTrade  from '../pages/NewTrade';
 import Journal   from '../pages/Journal';
+import ModelBuilder from '../pages/ModelBuilder';
 import { MonthlyReports, YearlyReports } from '../pages/Reports';
 import '../styles/desktop.css';
 
@@ -37,6 +38,7 @@ export default function DesktopLayout() {
           <Route path="/journal"   element={<Journal/>}/>
           <Route path="/monthly"   element={<MonthlyReports/>}/>
           <Route path="/yearly"    element={<YearlyReports/>}/>
+          <Route path="/model-builder" element={<ModelBuilder/>}/>
           <Route path="*"          element={<Navigate to="/" replace/>}/>
         </Routes>
       </main>

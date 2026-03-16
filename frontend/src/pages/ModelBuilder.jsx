@@ -145,19 +145,24 @@ export default function ModelBuilder() {
             <div style={{fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase'}}>Current Checklist</div>
             <div style={{fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary)'}}>Total: {checklist.reduce((s,i)=>s+i.weight, 0)} pts</div>
           </div>
-          {checklist.map((item, i) => (
-            <div key={i} className="ci-card" style={{display:'flex', flexDirection:'column', gap:6, padding: '14px', border: '1px solid #e2e8f0', borderRadius: 12, marginBottom: 10, background: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'}}>
-              <div style={{display:'flex', alignItems:'center', gap:10}}>
-                <div style={{flex:1, fontWeight:700, fontSize: '0.95rem'}}>{item.label}</div>
-                <div style={{fontSize:'0.85rem', color:'var(--primary)', fontWeight:800, background: 'var(--bg)', padding: '4px 8px', borderRadius: 6}}>{item.weight} pts</div>
-                <div style={{display:'flex', gap:4}}>
-                  <button className="btn-icon" onClick={() => moveItem(i, -1)} disabled={i===0}>↑</button>
-                  <button className="btn-icon" onClick={() => moveItem(i, 1)} disabled={i===checklist.length-1}>↓</button>
-                  <button className="btn-icon" style={{color: '#e11d48'}} onClick={() => removeItem(i)}>🗑</button>
+          {checklist.map((item, i) => {
+            const w = item.weight;
+            const bg = w <= 5 ? '#fdf2f8' : w <= 15 ? '#EFF6FF' : w <= 20 ? '#FEF3C7' : '#FAF5FF';
+            const color = w <= 5 ? '#ec4899' : w <= 15 ? '#2563EB' : w <= 20 ? '#D97706' : '#7E22CE';
+            return (
+              <div key={i} className="ci-card" style={{display:'flex', flexDirection:'column', gap:6, padding: '14px', border: '1px solid #e2e8f0', borderRadius: 12, marginBottom: 10, background: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'}}>
+                <div style={{display:'flex', alignItems:'center', gap:10}}>
+                  <div style={{flex:1, fontWeight:700, fontSize: '0.95rem'}}>{item.label}</div>
+                  <div style={{fontSize:'0.85rem', color: color, fontWeight:800, background: bg, padding: '4px 8px', borderRadius: 6}}>{item.weight} pts</div>
+                  <div style={{display:'flex', gap:4}}>
+                    <button className="btn-icon" onClick={() => moveItem(i, -1)} disabled={i===0}>↑</button>
+                    <button className="btn-icon" onClick={() => moveItem(i, 1)} disabled={i===checklist.length-1}>↓</button>
+                    <button className="btn-icon" style={{color: '#e11d48'}} onClick={() => removeItem(i)}>🗑</button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {checklist.length === 0 && <div style={{textAlign:'center', color:'#999', padding:'40px', background: '#f8fafc', borderRadius: 12, border: '2px dashed #e2e8f0'}}>No items added yet</div>}
         </div>
       </div>

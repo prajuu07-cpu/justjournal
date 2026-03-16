@@ -25,6 +25,7 @@ const MODEL2_ITEMS = [
 
 const WEIGHT_COLORS = {
   5:  { color: '#ec4899', bg: '#fdf2f8', rgb: '236, 72, 153' },   // Pink
+  10: { color: '#ec4899', bg: '#fdf2f8', rgb: '236, 72, 153' },   // Pink (mapped to 5 style)
   15: { color: '#2563EB', bg: '#EFF6FF', rgb: '37, 99, 235' },   // Blue
   20: { color: '#D97706', bg: '#FEF3C7', rgb: '217, 119, 6' },   // Orange
   25: { color: '#7E22CE', bg: '#FAF5FF', rgb: '126, 34, 206' },  // Purple
@@ -39,7 +40,7 @@ const MODEL_THEMES = {
 function calcScore(cl, items) { 
   return items.reduce((s,i) => s + (cl[i.key] ? (i.weight || 0) : 0), 0); 
 }
-function calcGrade(sc) { return sc>=90?'A+':sc>=75?'A':'Draft'; }
+function calcGrade(sc) { return sc >= 75 ? 'Valid' : 'Avoid'; }
 function getMissing(cl, items) { return items.filter(i=>!i.optional&&!cl[i.key]).map(i=>i.label); }
 
 function playWarning() {
@@ -313,7 +314,13 @@ export default function NewTrade({ editTrade, onDone }) {
             <div className="sc-label">{model} · Setup Score</div>
             <div className="sc-n" style={{color:barColor}}>{score}</div>
             <div className="sc-bg"><div className="sc-fill" style={{width:`${score}%`,background:`linear-gradient(90deg,${barColor}88,${barColor})`}}/></div>
-            <div className="q-tag" style={{background:score>=90?'#ede9fe':score>=75?'#e0f2fe':'#fff1f2',color:score>=90?'#7c3aed':score>=75?'#0284c7':'#e11d48'}}>{grade}</div>
+            <div className="q-tag" style={{
+              background: score >= 75 ? '#DCFCE7' : '#FEE2E2', 
+              color: score >= 75 ? '#166534' : '#991B1B',
+              border: `1px solid ${score >= 75 ? '#BBF7D0' : '#FECACA'}`
+            }}>
+              {grade}
+            </div>
           </div>
         </div>
       )}

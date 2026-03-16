@@ -14,7 +14,12 @@ def _now_iso():
 def get_custom_models():
     uid = ObjectId(get_jwt_identity())
     db = get_db()
-    models = list(db.custom_models.find({"user_id": uid, "is_deleted": {"$ne": True}}))
+    mode_filter = request.args.get('mode')
+    query = {"user_id": uid, "is_deleted": {"$ne": True}}
+    if mode_filter:
+        query["mode"] = mode_filter
+        
+    models = list(db.custom_models.find(query))
     for m in models:
         m['_id'] = str(m['_id'])
         if 'user_id' in m: m['user_id'] = str(m['user_id'])
@@ -30,6 +35,7 @@ def create_custom_model():
     name = data.get('name', '').strip()
     checklist = data.get('checklist', [])
     notes = data.get('notes', '').strip()
+    model_mode = data.get('mode', 'justchill')
     created_from = data.get('createdFrom', 'practice')
 
     if not name:
@@ -42,6 +48,7 @@ def create_custom_model():
         "name": name,
         "checklist": checklist,
         "notes": notes,
+        "mode": model_mode,
         "createdFrom": created_from,
         "created_at": _now_iso()
     }

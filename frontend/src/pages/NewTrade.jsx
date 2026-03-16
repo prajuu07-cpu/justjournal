@@ -186,10 +186,12 @@ export default function NewTrade({ editTrade, onDone }) {
 
   const modelBadges = useMemo(() => {
     let list = [];
+    const activeCustom = customModels.filter(m => (m.mode || 'justchill') === mode);
+    
     if (mode === 'practice') {
-      list = [{name: 'Practice'}, ...customModels];
+      list = [{name: 'Practice'}, ...activeCustom];
     } else {
-      list = [{name: 'Model 1'}, {name: 'Model 2'}, ...customModels];
+      list = [{name: 'Model 1'}, {name: 'Model 2'}, ...activeCustom];
     }
     
     // Add current model if it's missing (deleted/historical)

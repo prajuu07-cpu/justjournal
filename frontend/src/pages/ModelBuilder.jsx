@@ -50,6 +50,7 @@ export default function ModelBuilder() {
         name: name.trim(),
         checklist: checklist,
         notes: modelNotes.trim(),
+        mode: 'justchill',
         createdFrom: 'practice'
       });
       addModel(data);

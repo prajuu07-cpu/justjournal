@@ -9,7 +9,7 @@ export default function ModelBuilder() {
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [checklist, setChecklist] = useState([]);
-  const [newItem, setNewItem] = useState('');
+  const [newItem, setNewItem] = useState({ label: '', weight: '', notes: '' });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -18,12 +18,12 @@ export default function ModelBuilder() {
   const [date] = useState(new Date().toISOString().slice(0, 10));
   const [dir] = useState('Buy');
   const [risk] = useState('1.0');
-  const [session] = useState('London');
 
   const addItem = () => {
-    if (newItem.trim()) {
-      setChecklist([...checklist, newItem.trim()]);
-      setNewItem('');
+    if (newItem.label.trim()) {
+      const w = parseInt(newItem.weight) || 0;
+      setChecklist([...checklist, { ...newItem, label: newItem.label.trim(), weight: w }]);
+      setNewItem({ label: '', weight: '', notes: '' });
     }
   };
 
@@ -107,31 +107,52 @@ export default function ModelBuilder() {
           <div className="field"><label>Date</label><input type="date" value={date} readOnly/></div>
           <div className="field"><label>Direction</label><select value={dir} readOnly><option>Buy</option></select></div>
           <div className="field"><label>Risk %</label><input value={risk} readOnly/></div>
-          <div className="field"><label>Session</label><input value={session} readOnly/></div>
         </div>
       </div>
 
       <div className="card">
         <div className="form-sec">Checklist Builder — {name}</div>
-        <div className="field" style={{display:'flex', gap:8, marginBottom: '1rem'}}>
-          <input 
-            value={newItem} 
-            onChange={e => setNewItem(e.target.value)} 
-            placeholder="Add checklist item..."
-            onKeyDown={e => e.key === 'Enter' && addItem()}
-          />
-          <button className="btn btn-ghost" onClick={addItem}>Add</button>
+        <div className="checklist-entry" style={{display:'flex', flexDirection:'column', gap:8, marginBottom: '1.5rem'}}>
+          <div style={{display:'flex', gap:8}}>
+            <input 
+              style={{flex:3}}
+              value={newItem.label} 
+              onChange={e => setNewItem({...newItem, label: e.target.value})} 
+              placeholder="Checklist Item Label (e.g. Daily Bias)"
+              onKeyDown={e => e.key === 'Enter' && addItem()}
+            />
+            <input 
+              style={{flex:1}}
+              type="number"
+              value={newItem.weight} 
+              onChange={e => setNewItem({...newItem, weight: e.target.value})} 
+              placeholder="Points"
+            />
+          </div>
+          <div style={{display:'flex', gap:8}}>
+            <input 
+              style={{flex:1}}
+              value={newItem.notes} 
+              onChange={e => setNewItem({...newItem, notes: e.target.value})} 
+              placeholder="Notes/Description (optional)"
+            />
+            <button className="btn btn-ghost" onClick={addItem}>Add</button>
+          </div>
         </div>
 
         <div className="checklist-preview">
           {checklist.map((item, i) => (
-            <div key={i} className="ci" style={{display:'flex', alignItems:'center', gap:10, padding: '10px 12px', border: '1px solid #eee', borderRadius: 8, marginBottom: 8}}>
-              <div style={{flex:1}}>{item}</div>
-              <div style={{display:'flex', gap:4}}>
-                <button className="btn-icon" onClick={() => moveItem(i, -1)} disabled={i===0}>↑</button>
-                <button className="btn-icon" onClick={() => moveItem(i, 1)} disabled={i===checklist.length-1}>↓</button>
-                <button className="btn-icon" style={{color: '#e11d48'}} onClick={() => removeItem(i)}>🗑</button>
+            <div key={i} className="ci" style={{display:'flex', flexDirection:'column', gap:4, padding: '12px', border: '1px solid #eee', borderRadius: 8, marginBottom: 8}}>
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{flex:1, fontWeight:600}}>{item.label}</div>
+                <div style={{fontSize:'0.85rem', color:'var(--primary)', fontWeight:700}}>{item.weight} pts</div>
+                <div style={{display:'flex', gap:4}}>
+                  <button className="btn-icon" onClick={() => moveItem(i, -1)} disabled={i===0}>↑</button>
+                  <button className="btn-icon" onClick={() => moveItem(i, 1)} disabled={i===checklist.length-1}>↓</button>
+                  <button className="btn-icon" style={{color: '#e11d48'}} onClick={() => removeItem(i)}>🗑</button>
+                </div>
               </div>
+              {item.notes && <div style={{fontSize:'0.8rem', color:'#666', fontStyle:'italic'}}>{item.notes}</div>}
             </div>
           ))}
           {checklist.length === 0 && <div style={{textAlign:'center', color:'#999', padding:'20px'}}>No items added yet</div>}

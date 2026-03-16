@@ -61,11 +61,14 @@ def _calc_score(model: str, cl: dict, uid: Optional[ObjectId] = None) -> int:
         if custom and custom.get("checklist"):
             items = custom["checklist"]
             if not items: return 0
-            # Equal weight distribution for custom models
-            weight = 100 / len(items)
+            
             score = 0
             for item in items:
-                if cl.get(item):
+                # Support both old string list and new object list
+                label = item["label"] if isinstance(item, dict) else item
+                weight = item.get("weight", 100/len(items)) if isinstance(item, dict) else (100/len(items))
+                
+                if cl.get(label):
                     score += weight
             return int(round(score))
             

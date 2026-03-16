@@ -89,12 +89,25 @@ export default function NewTrade({ editTrade, onDone }) {
     if (model === 'Model 2') return MODEL2_ITEMS;
     const custom = customModels.find(m => m.name === model);
     if (custom && custom.checklist) {
-      return custom.checklist.map(label => ({
-        key: label,
-        label: label,
-        weight: 100 / custom.checklist.length,
-        optional: false
-      }));
+      return custom.checklist.map(item => {
+        // Handle new object structure
+        if (typeof item === 'object' && item !== null) {
+          return {
+            key: item.label,
+            label: item.label,
+            weight: item.weight || 0,
+            optional: false,
+            notes: item.notes || ''
+          };
+        }
+        // Fallback for legacy string items
+        return {
+          key: item,
+          label: item,
+          weight: 100 / custom.checklist.length,
+          optional: false
+        };
+      });
     }
     return [];
   }, [model, customModels]);
@@ -279,10 +292,13 @@ export default function NewTrade({ editTrade, onDone }) {
             const col = WEIGHT_COLORS[item.weight] || DEFAULT_COLOR;
             return (
               <div key={item.key} className={`ci${cl[item.key]?' on':''}`} onClick={()=>toggle(item.key)} 
-                   style={{'--ici': col.color, '--ibg': col.bg, '--irgb': col.rgb}}>
-                <div className="ci-box">{cl[item.key]&&<svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4.5l3.5 3.5L11 1" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div>
-                <span className="ci-lbl">{item.label}{(item.optional && item.key !== 'sync2H') && <span className="ci-opt"> (optional)</span>}</span>
-                <span className="ci-pts">{Math.round(item.weight)}pts</span>
+                   style={{'--ici': col.color, '--ibg': col.bg, '--irgb': col.rgb, display:'flex', flexDirection:'column', alignItems:'flex-start', padding:'12px'}}>
+                <div style={{display:'flex', alignItems:'center', width:'100%', gap:10}}>
+                  <div className="ci-box">{cl[item.key]&&<svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4.5l3.5 3.5L11 1" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div>
+                  <span className="ci-lbl">{item.label}{(item.optional && item.key !== 'sync2H') && <span className="ci-opt"> (optional)</span>}</span>
+                  <span className="ci-pts">{Math.round(item.weight)}pts</span>
+                </div>
+                {item.notes && <div style={{fontSize:'0.75rem', color:'#666', fontStyle:'italic', marginLeft:'28px', marginTop:'4px'}}>{item.notes}</div>}
               </div>
             );
           })}

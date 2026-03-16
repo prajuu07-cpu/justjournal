@@ -17,6 +17,7 @@ def get_custom_models():
     models = list(db.custom_models.find({"user_id": uid, "is_deleted": {"$ne": True}}))
     for m in models:
         m['_id'] = str(m['_id'])
+        if 'user_id' in m: m['user_id'] = str(m['user_id'])
     return jsonify(models)
 
 @custom_models_bp.route('', methods=['POST'])
@@ -47,6 +48,7 @@ def create_custom_model():
     
     result = db.custom_models.insert_one(new_model)
     new_model['_id'] = str(result.inserted_id)
+    new_model['user_id'] = str(new_model['user_id'])
     
     return jsonify(new_model), 201
 
@@ -66,7 +68,7 @@ def delete_custom_model(model_id):
         {"$set": {"is_deleted": True, "deleted_at": _now_iso()}}
     )
     
-    if result.deleted_count == 0:
+    if result.matched_count == 0:
         return jsonify(error="Model not found"), 404
         
     return jsonify(message="Model deleted successfully")

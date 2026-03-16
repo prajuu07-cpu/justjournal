@@ -6,12 +6,15 @@ import NewTrade  from '../pages/NewTrade';
 import Journal   from '../pages/Journal';
 import ModelBuilder from '../pages/ModelBuilder';
 import { MonthlyReports, YearlyReports } from '../pages/Reports';
+import SetLimit from '../pages/SetLimit';
 import '../styles/mobile/mobile_fresh.css';
 
 import ModeSwitch from '../components/ModeSwitch';
+import { useMode } from '../context/ModeContext';
 
 export default function MobileLayout() {
   const { user, logout } = useAuth();
+  const { mode } = useMode();
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
 
@@ -44,6 +47,9 @@ export default function MobileLayout() {
           <NavLink to="/journal" className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Journal</NavLink>
           <NavLink to="/monthly" className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Monthly</NavLink>
           <NavLink to="/yearly" className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Yearly</NavLink>
+          {mode === 'justchill' && (
+            <NavLink to="/settings" className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Set Limit</NavLink>
+          )}
         </nav>
 
         <div className="m-sidebar-foot">
@@ -60,6 +66,7 @@ export default function MobileLayout() {
           <Route path="/monthly"   element={<MonthlyReports/>}/>
           <Route path="/yearly"    element={<YearlyReports/>}/>
           <Route path="/model-builder" element={<ModelBuilder/>}/>
+          <Route path="/settings"  element={<SetLimit/>}/>
           <Route path="*"          element={<Navigate to="/" replace/>}/>
         </Routes>
       </main>

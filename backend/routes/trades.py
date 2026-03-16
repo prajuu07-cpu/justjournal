@@ -208,9 +208,13 @@ def create_trade():
                 r_multiple = float(data.get("r_multiple") or 0)
                 if r_multiple <= 0:
                     return jsonify(error="Win needs a positive R multiple"), 400
-                pnl = _calc_pnl(risk, r_multiple)
+                pnl = _calc_pnl(risk, r_multiple) if status == "final" and result else None
 
     if mode == "justchill":
+        settings = db.user_settings.find_one({"user_id": uid}) or {}
+        w_limit = settings.get("weekly_limit", 2)
+        m_limit = settings.get("monthly_loss_limit", 5)
+
         # Weekly limit (Siloed by mode)
         start, end = _week_bounds(d)
         w_filt = {
@@ -221,8 +225,8 @@ def create_trade():
         w_filt["mode"] = mode
 
         wcount = db.trades.count_documents(w_filt)
-        if wcount >= 2:
-            return jsonify(limitType="weekly", error="Weekly limit reached (2 final trades)."), 422
+        if wcount >= w_limit:
+            return jsonify(limitType="weekly", error=f"Weekly limit reached ({w_limit} final trades)."), 422
 
         # Monthly loss limit (Siloed by mode)
         ym = trade_date[:7]
@@ -235,8 +239,8 @@ def create_trade():
         l_filt["mode"] = mode
 
         lcount = db.trades.count_documents(l_filt)
-        if lcount >= 5:
-            return jsonify(limitType="monthly", error="Monthly loss limit reached (5 losses)."), 422
+        if lcount >= m_limit:
+            return jsonify(limitType="monthly", error=f"Monthly loss limit reached ({m_limit} losses)."), 422
 
     now = _now_iso()
     doc = {
@@ -332,6 +336,10 @@ def update_trade(trade_id):
             r_multiple, pnl = None, None
 
     if mode == "justchill":
+        settings = db.user_settings.find_one({"user_id": uid}) or {}
+        w_limit = settings.get("weekly_limit", 2)
+        m_limit = settings.get("monthly_loss_limit", 5)
+
         # Weekly limit (exclude self, Siloed by mode)
         start, end = _week_bounds(d)
         w_filt = {
@@ -343,7 +351,7 @@ def update_trade(trade_id):
         w_filt["mode"] = mode
 
         wcount = db.trades.count_documents(w_filt)
-        if wcount >= 2:
+        if wcount >= w_limit:
             return jsonify(limitType="weekly", error="Weekly limit reached."), 422
 
         # Monthly loss limit (Siloed by mode)
@@ -358,7 +366,7 @@ def update_trade(trade_id):
         l_filt["mode"] = mode
 
         lcount = db.trades.count_documents(l_filt)
-        if lcount >= 5:
+        if lcount >= m_limit:
             return jsonify(limitType="monthly", error="Monthly loss limit reached."), 422
 
     db.trades.update_one({"_id": oid, "user_id": uid, "mode": get_mode()}, {"$set": {
@@ -445,6 +453,54 @@ def delete_trade(trade_id):
 
     rebuild_reports(str(uid))
     return jsonify(message="Trade deleted")
+
+
+# ── GET /api/trades/limit-status ──────────────────────────────────────────────
+@trades_bp.get("/limit-status")
+@jwt_required()
+def get_limit_status():
+    uid  = ObjectId(get_jwt_identity())
+    db   = get_db()
+    mode = get_mode()
+    
+    if mode != "justchill":
+        return jsonify(weekly_reached=False, monthly_reached=False)
+
+    settings = db.user_settings.find_one({"user_id": uid}) or {}
+    w_limit = settings.get("weekly_limit", 2)
+    m_limit = settings.get("monthly_loss_limit", 5)
+
+    today = date.today()
+    start, end = _week_bounds(today)
+    
+    # Weekly final trades
+    w_filt = {
+        "user_id": uid,
+        "status":  "final",
+        "mode":    mode,
+        "date":    {"$gte": start, "$lte": end},
+    }
+    wcount = db.trades.count_documents(w_filt)
+
+    # Monthly losses
+    ym = today.strftime("%Y-%m")
+    l_filt = {
+        "user_id": uid,
+        "status":  "final",
+        "mode":    mode,
+        "result":  "Loss",
+        "date":    {"$regex": f"^{ym}"},
+    }
+    lcount = db.trades.count_documents(l_filt)
+
+    return jsonify(
+        weekly_reached=wcount >= w_limit,
+        monthly_reached=lcount >= m_limit,
+        weekly_count=wcount,
+        weekly_limit=w_limit,
+        monthly_count=lcount,
+        monthly_limit=m_limit
+    )
 
 
 # ── DELETE /api/trades/drafts ────────────────────────────────────────────────

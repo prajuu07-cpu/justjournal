@@ -12,6 +12,7 @@ export const ModeProvider = ({ children }) => {
 
   const [practiceDefaults, setPracticeDefaults] = useState({ pair: '', risk: '', date: '' });
   const [customModels, setCustomModels] = useState([]);
+  const [userSettings, setUserSettings] = useState({ weekly_limit: 2, monthly_loss_limit: 5 });
 
   useEffect(() => {
     localStorage.setItem('tjp_active_mode', mode);
@@ -26,7 +27,16 @@ export const ModeProvider = ({ children }) => {
         console.error("Failed to fetch models", err);
       }
     };
+    const fetchSettings = async () => {
+      try {
+        const { data } = await api.get('/settings');
+        setUserSettings(data);
+      } catch (err) {
+        console.error("Failed to fetch settings", err);
+      }
+    };
     fetchModels();
+    fetchSettings();
   }, []);
 
   const switchMode = (newMode) => {
@@ -55,6 +65,17 @@ export const ModeProvider = ({ children }) => {
     }
   };
 
+  const updateSettings = async (newSettings) => {
+    try {
+      await api.post('/settings', newSettings);
+      setUserSettings(newSettings);
+      return true;
+    } catch (err) {
+      console.error("Failed to update settings", err);
+      return false;
+    }
+  };
+
   return (
     <ModeContext.Provider value={{ 
       mode, 
@@ -63,7 +84,9 @@ export const ModeProvider = ({ children }) => {
       updatePracticeDefaults,
       customModels,
       addModel,
-      deleteModel
+      deleteModel,
+      userSettings,
+      updateSettings
     }}>
       {children}
     </ModeContext.Provider>

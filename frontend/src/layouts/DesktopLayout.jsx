@@ -5,13 +5,17 @@ import NewTrade  from '../pages/NewTrade';
 import Journal   from '../pages/Journal';
 import ModelBuilder from '../pages/ModelBuilder';
 import { MonthlyReports, YearlyReports } from '../pages/Reports';
+import SetLimit from '../pages/SetLimit';
 import '../styles/desktop.css';
 
 import ModeSwitch from '../components/ModeSwitch';
+import { useMode } from '../context/ModeContext';
 
 export default function DesktopLayout() {
   const { user, logout } = useAuth();
+  const { mode } = useMode();
   const nav = useNavigate();
+
   const doLogout = () => { logout(); nav('/login'); };
 
   return (
@@ -24,6 +28,9 @@ export default function DesktopLayout() {
           <NavLink to="/journal"          className={({isActive})=>isActive?'nav-item active':'nav-item'}>Journal</NavLink>
           <NavLink to="/monthly"          className={({isActive})=>isActive?'nav-item active':'nav-item'}>Monthly</NavLink>
           <NavLink to="/yearly"           className={({isActive})=>isActive?'nav-item active':'nav-item'}>Yearly</NavLink>
+          {mode === 'justchill' && (
+            <NavLink to="/settings" className={({isActive})=>isActive?'nav-item active':'nav-item'}>Set Limit</NavLink>
+          )}
         </nav>
         <div className="sidebar-foot">
           <div className="user-info">@{user?.username}</div>
@@ -39,9 +46,12 @@ export default function DesktopLayout() {
           <Route path="/monthly"   element={<MonthlyReports/>}/>
           <Route path="/yearly"    element={<YearlyReports/>}/>
           <Route path="/model-builder" element={<ModelBuilder/>}/>
+          <Route path="/settings"  element={<SetLimit/>}/>
           <Route path="*"          element={<Navigate to="/" replace/>}/>
         </Routes>
       </main>
+
+
     </div>
   );
 }

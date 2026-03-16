@@ -60,7 +60,7 @@ function playWarning() {
 
 export default function NewTrade({ editTrade, onDone }) {
   const nav = useNavigate();
-  const { mode, practiceDefaults, updatePracticeDefaults, customModels, deleteModel } = useMode();
+  const { mode, practiceDefaults, updatePracticeDefaults, customModels, deleteModel, userSettings } = useMode();
   const isEdit = !!editTrade?.id;
 
 
@@ -84,6 +84,9 @@ export default function NewTrade({ editTrade, onDone }) {
   const [err,    setErr]    = useState('');
   const [limitModal, setLimitModal] = useState('');
   const [busy,   setBusy]   = useState(false);
+
+
+
 
   const activeItems = useMemo(() => {
     if (model === 'Model 1') return MODEL1_ITEMS;
@@ -210,7 +213,14 @@ export default function NewTrade({ editTrade, onDone }) {
               <div className="lim-title">{limitModal==='weekly'?'Weekly Limit Reached':'Monthly Loss Limit Reached'}</div>
             </div>
             <div className="lim-body">
-              <div className="lim-msg">{limitModal==='weekly'?'You have reached 2 trades this week. No more trades until next week.':limitModal==='monthly'?'You have 5 losing trades this month. Trading is blocked until next month.':''}</div>
+              <div className="lim-msg">
+                {limitModal === 'weekly' 
+                  ? `You have reached ${userSettings.weekly_limit} trades this week. No more trades until next week.`
+                  : limitModal === 'monthly' 
+                    ? `You have reached ${userSettings.monthly_loss_limit} losing trades this month. Trading is blocked until next month.`
+                    : ''
+                }
+              </div>
               <button className="lim-dismiss" onClick={()=>setLimitModal('')}>Got it</button>
             </div>
           </div>
@@ -218,15 +228,23 @@ export default function NewTrade({ editTrade, onDone }) {
       )}
 
       <div className="page-hd">
-        <h1>{isEdit?'Edit Trade':'New Trade'}</h1>
-        <div style={{display:'flex',gap:8}}>
-          <button className="btn btn-ghost" onClick={()=>onDone?onDone():nav('/journal')}>Cancel</button>
-          <button className="btn btn-ghost" onClick={()=>save(false)} disabled={busy}>Save Draft</button>
-          <button className="btn btn-ok"    onClick={()=>save(true)}  disabled={(mode !== 'practice' && (missing.length>0||score<75)) || busy}>Save Final</button>
+        <h1>{isEdit ? 'Edit Trade' : 'New Trade'}</h1>
+        <div className="hd-actions">
+          {!isEdit && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setLimitModal('weekly')}>Check Limits</button>
+          )}
+          <button className="btn btn-ghost" onClick={() => onDone ? onDone() : nav('/journal')}>Cancel</button>
+          <button className="btn btn-ghost" onClick={() => save(false)} disabled={busy}>Save Draft</button>
+          <button className="btn btn-ok" onClick={() => save(true)} disabled={busy}>Save Final</button>
         </div>
       </div>
 
-      {err && <div className="err-box">{err}</div>}
+      {err && (
+        <div className="err-box" style={{marginBottom:24, justifyContent: 'center'}}>
+          <span>⚠️</span>
+          {err}
+        </div>
+      )}
 
       {/* Model Selection - always visible */}
       <div className="card">
@@ -259,21 +277,7 @@ export default function NewTrade({ editTrade, onDone }) {
               </button>
             )}
           </div>
-          {modelBadges.find(m => m.name === model && m._id && !m.isHistorical) && (
-            <div style={{marginTop: '12px', borderTop: '1px solid #f1f5f9', paddingTop: '8px'}}>
-              <button 
-                className="del-model-btn" 
-                onClick={() => handleDeleteModel(modelBadges.find(m => m.name === model))}
-                style={{
-                  color: '#e11d48', fontSize: '0.85rem', fontWeight: 600, 
-                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '4px'
-                }}
-              >
-                🗑 Delete {model}
-              </button>
-            </div>
-          )}
+
         </div>
       </div>
 
@@ -354,6 +358,25 @@ export default function NewTrade({ editTrade, onDone }) {
         <div className="form-sec">Notes</div>
         <div className="field"><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3} placeholder="Optional notes…" style={{resize:'vertical'}}/></div>
       </div>
+
+      {modelBadges.find(m => m.name === model && m._id && !m.isHistorical) && (
+        <div style={{marginTop: '32px', textAlign: 'center', paddingBottom: '20px'}}>
+          <button 
+            className="del-model-btn" 
+            onClick={() => handleDeleteModel(modelBadges.find(m => m.name === model))}
+            style={{
+              color: '#e11d48', fontSize: '0.85rem', fontWeight: 600, 
+              background: 'none', border: 'none', padding: 12, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              opacity: 0.7, transition: 'opacity 0.2s'
+            }}
+            onMouseOver={e => e.currentTarget.style.opacity = 1}
+            onMouseOut={e => e.currentTarget.style.opacity = 0.7}
+          >
+            🗑 Delete {model}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

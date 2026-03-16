@@ -177,8 +177,7 @@ def create_trade():
     except (TypeError, ValueError, AssertionError):
         return jsonify(error="Risk % must be between 0.01 and 5"), 400
 
-    if mode == "justchill" and model not in ("Model 1", "Model 2"):
-        return jsonify(error="Model must be 'Model 1' or 'Model 2' for JustChill mode."), 400
+    # Removed strict model restriction for JustChill to allow custom models
     if mode == "practice":
         if not model or model == "Practice Model":
             model = "Practice"

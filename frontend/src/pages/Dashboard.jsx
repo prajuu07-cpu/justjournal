@@ -53,14 +53,15 @@ export default function Dashboard() {
           <div className="card-title">Recent Trades</div>
           <div className="tbl-wrap">
             <table className="tbl">
-              <thead><tr><th>Date</th><th>Pair</th><th>Model</th><th>Grade</th><th>Result</th><th>PNL</th></tr></thead>
+              <thead><tr><th>Date</th><th>Pair</th>{mode === 'practice' && <th>Session</th>}<th>Model</th>{mode !== 'practice' && <th>Grade</th>}<th>Result</th><th>PNL</th></tr></thead>
               <tbody>
                 {recent.map(t => (
                   <tr key={t.id} className={t.status === 'final' ? 'tr-final' : ''}>
                     <td>{formatDate(t.date)}</td>
                     <td><strong>{t.pair}</strong></td>
-                    <td><span className={`pill ${t.model === 'Model 2' ? 'pM2' : t.model === 'Practice Model' ? 'pPM' : 'pM1'}`}>{t.model}</span></td>
-                    <td><span className={`pill ${t.grade === 'A+' ? 'pAp' : t.grade === 'A' ? 'pB' : 'pLow'}`}>{t.grade}</span></td>
+                    {mode === 'practice' && <td>{t.session || '—'}</td>}
+                    <td><span className={`pill ${t.model === 'Model 2' ? 'pM2' : t.model === 'Practice Model' ? 'pPM' : 'pM1'}`}>{t.model === 'Practice Model' ? 'Practice' : t.model}</span></td>
+                    {mode !== 'practice' && <td><span className={`pill ${t.grade === 'A+' ? 'pAp' : t.grade === 'A' ? 'pB' : 'pLow'}`}>{t.grade}</span></td>}
                     <td>{t.result ? <span className={`pill ${t.result === 'Win' ? 'pWin' : t.result === 'Loss' ? 'pLoss' : 'pBE'}`}>{t.result}</span> : '—'}</td>
                     <td className={t.pnl_percentage > 0 ? 'rp' : t.pnl_percentage < 0 ? 'rn' : 'mono'}>{t.pnl_percentage != null ? `${t.pnl_percentage >= 0 ? '+' : ''}${parseFloat(t.pnl_percentage).toFixed(2)}%` : '—'}</td>
                   </tr>

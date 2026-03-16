@@ -80,6 +80,7 @@ a{text-decoration:none;color:inherit}
 .pBE{background:#F1F5F9;color:#475569;border:1px solid #E2E8F0}
 .pM1{background:#F3E8FF;color:#7E22CE;border:1px solid #E9D5FF}
 .pM2{background:#E0E7FF;color:#4F46E5;border:1px solid #C7D2FE}
+.pPM{background:#F1F5F9;color:#64748B;border:1px solid #CBD5E1}
 
 /* ── FORMS ───────────────────────────────────────────────────── */
 .form-sec{font-size:12px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;display:flex;align-items:center;gap:12px}

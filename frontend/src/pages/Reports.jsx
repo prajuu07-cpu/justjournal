@@ -101,14 +101,15 @@ export function MonthlyReports() {
           <div className="card" style={{padding:0,overflow:'hidden'}}>
             <div className="tbl-wrap">
               <table className="tbl">
-                <thead><tr><th>Date</th><th>Pair</th><th>Grade</th><th>Dir</th><th>Risk</th><th>Result</th><th>R:R</th><th>PNL</th></tr></thead>
+                <thead><tr><th>Date</th><th>Pair</th>{mode === 'practice' && <th>Session</th>}<th>Model</th><th>Grade</th><th>Dir</th><th>Risk</th><th>Result</th><th>R:R</th><th>PNL</th></tr></thead>
                 <tbody>
                   {data.trades.map(t=>(
                     <tr key={t.id} className={t.status === 'final' ? 'tr-final' : ''}>
                       <td>{formatDate(t.date)}</td>
                       <td><strong>{t.pair}</strong></td>
-                      <td><span className={`pill ${t.model === 'Model 2' ? 'pM2' : t.model === 'Practice Model' ? 'pPM' : 'pM1'}`}>{t.model}</span></td>
-                      <td><span className={`pill ${t.grade==='A+'?'pAp':t.grade==='A'?'pB':'pLow'}`}>{t.grade}</span></td>
+                      {mode === 'practice' && <td>{t.session || '—'}</td>}
+                      <td><span className={`pill ${t.model === 'Model 2' ? 'pM2' : t.model === 'Practice Model' ? 'pPM' : 'pM1'}`}>{t.model === 'Practice Model' ? 'Practice' : t.model}</span></td>
+                      {mode !== 'practice' && <td><span className={`pill ${t.grade==='A+'?'pAp':t.grade==='A'?'pB':'pLow'}`}>{t.grade}</span></td>}
                       <td>{t.direction}</td><td>{t.risk_percent}%</td>
                       <td>{t.result?<span className={`pill ${t.result==='Win'?'pWin':t.result==='Loss'?'pLoss':'pBE'}`}>{t.result}</span>:'—'}</td>
                       <td className="mono">{t.r_multiple?`${parseFloat(t.r_multiple).toFixed(2)}R`:'—'}</td>
@@ -212,13 +213,14 @@ export function YearlyReports() {
           <div className="card" style={{padding:0,overflow:'hidden'}}>
             <div className="tbl-wrap">
               <table className="tbl">
-                <thead><tr><th>Date</th><th>Pair</th><th>Grade</th><th>Dir</th><th>Risk</th><th>Result</th><th>R:R</th><th>PNL</th></tr></thead>
+                <thead><tr><th>Date</th><th>Pair</th>{mode === 'practice' && <th>Session</th>}<th>Model</th><th>Grade</th><th>Dir</th><th>Risk</th><th>Result</th><th>R:R</th><th>PNL</th></tr></thead>
                 <tbody>
                   {data.trades.map(t=>(
                     <tr key={t.id} className={t.status === 'final' ? 'tr-final' : ''}>
                       <td>{formatDate(t.date)}</td><td><strong>{t.pair}</strong></td>
-                      <td><span className={`pill ${t.model === 'Model 2' ? 'pM2' : t.model === 'Practice Model' ? 'pPM' : 'pM1'}`}>{t.model}</span></td>
-                      <td><span className={`pill ${t.grade==='A+'?'pAp':t.grade==='A'?'pB':'pLow'}`}>{t.grade}</span></td>
+                      {mode === 'practice' && <td>{t.session || '—'}</td>}
+                      <td><span className={`pill ${t.model === 'Model 2' ? 'pM2' : t.model === 'Practice Model' ? 'pPM' : 'pM1'}`}>{t.model === 'Practice Model' ? 'Practice' : t.model}</span></td>
+                      {mode !== 'practice' && <td><span className={`pill ${t.grade==='A+'?'pAp':t.grade==='A'?'pB':'pLow'}`}>{t.grade}</span></td>}
                       <td>{t.direction}</td><td>{t.risk_percent}%</td>
                       <td>{t.result?<span className={`pill ${t.result==='Win'?'pWin':t.result==='Loss'?'pLoss':'pBE'}`}>{t.result}</span>:'—'}</td>
                       <td className="mono">{t.r_multiple?`${parseFloat(t.r_multiple).toFixed(2)}R`:'—'}</td>

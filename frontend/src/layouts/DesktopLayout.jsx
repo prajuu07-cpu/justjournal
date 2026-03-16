@@ -6,6 +6,8 @@ import Journal   from '../pages/Journal';
 import { MonthlyReports, YearlyReports } from '../pages/Reports';
 import '../styles/desktop.css';
 
+import ModeSwitch from '../components/ModeSwitch';
+
 export default function DesktopLayout() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
@@ -28,6 +30,7 @@ export default function DesktopLayout() {
         </div>
       </aside>
       <main className="main-content">
+        <ModeSwitch />
         <Routes>
           <Route path="/"          element={<Dashboard/>}/>
           <Route path="/new-trade" element={<NewTrade/>}/>

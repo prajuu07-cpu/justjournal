@@ -7,6 +7,8 @@ import Journal   from '../pages/Journal';
 import { MonthlyReports, YearlyReports } from '../pages/Reports';
 import '../styles/mobile/mobile_fresh.css';
 
+import ModeSwitch from '../components/ModeSwitch';
+
 export default function MobileLayout() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
@@ -49,6 +51,7 @@ export default function MobileLayout() {
       </aside>
 
       <main className="m-content">
+        <ModeSwitch />
         <Routes>
           <Route path="/"          element={<Dashboard/>}/>
           <Route path="/new-trade" element={<NewTrade/>}/>

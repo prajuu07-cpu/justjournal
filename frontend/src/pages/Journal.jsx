@@ -109,7 +109,7 @@ export default function Journal() {
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>Date</th><th>Pair</th><th>Model</th><th>Grade</th>
+                  <th>Date</th><th>Pair</th>{mode === 'practice' && <th>Session</th>}<th>Model</th>{mode !== 'practice' && <th>Grade</th>}
                   <th>Status</th><th>RR</th><th>PNL</th><th>Result</th><th></th>
                 </tr>
               </thead>
@@ -118,8 +118,9 @@ export default function Journal() {
                   <tr key={t.id} className={t.status === 'final' ? 'tr-final' : ''}>
                     <td>{formatDate(t.date)}</td>
                     <td><strong>{t.pair}</strong></td>
-                    <td><span className={`pill ${t.model === 'Model 2' ? 'pM2' : t.model === 'Practice Model' ? 'pPM' : 'pM1'}`}>{t.model}</span></td>
-                    <td><span className={`pill ${t.grade === 'A+' ? 'pAp' : t.grade === 'A' ? 'pB' : 'pLow'}`}>{t.grade}</span></td>
+                    {mode === 'practice' && <td>{t.session || '—'}</td>}
+                    <td><span className={`pill ${t.model === 'Model 2' ? 'pM2' : t.model === 'Practice Model' ? 'pPM' : 'pM1'}`}>{t.model === 'Practice Model' ? 'Practice' : t.model}</span></td>
+                    {mode !== 'practice' && <td><span className={`pill ${t.grade === 'A+' ? 'pAp' : t.grade === 'A' ? 'pB' : 'pLow'}`}>{t.grade}</span></td>}
                     <td><span className={`pill ${t.status === 'final' ? 'pFin' : 'pDft'}`}>{t.status}</span></td>
                     <td className="mono">{t.r_multiple != null ? `${parseFloat(t.r_multiple).toFixed(2)}R` : '—'}</td>
                     <td className={t.pnl_percentage > 0 ? 'rp' : t.pnl_percentage < 0 ? 'rn' : 'mono'}>

@@ -130,6 +130,7 @@ def create_trade():
 
     pair       = (data.get("pair") or "").strip().upper()
     trade_date = (data.get("date") or "").strip()
+    session    = (data.get("session") or "").strip()
     model      = data.get("model", "Model 1")
     direction  = data.get("direction", "Buy")
     risk_str   = data.get("risk_percent")
@@ -218,6 +219,7 @@ def create_trade():
     doc = {
         "user_id":        uid,
         "mode":           mode,
+        "session":        session if mode == "practice" else None,
         "date":           trade_date,
         "pair":           pair,
         "model":          model,
@@ -260,6 +262,8 @@ def update_trade(trade_id):
 
     pair       = (data.get("pair") or existing.get("pair", "")).strip().upper()
     trade_date = (data.get("date") or existing.get("date", "")).strip()
+    session    = data.get("session", existing.get("session", ""))
+    if isinstance(session, str): session = session.strip()
     model      = data.get("model",        existing.get("model",      "Model 1"))
     direction  = data.get("direction",    existing.get("direction",  "Buy"))
     risk_str   = data.get("risk_percent", existing.get("risk_percent"))
@@ -336,6 +340,7 @@ def update_trade(trade_id):
     db.trades.update_one({"_id": oid, "user_id": uid, "mode": get_mode()}, {"$set": {
         "pair":           pair,
         "date":           trade_date,
+        "session":        session if get_mode() == "practice" else None,
         "model":          model,
         "direction":      direction,
         "risk_percent":   risk,

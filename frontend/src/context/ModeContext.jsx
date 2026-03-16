@@ -9,6 +9,8 @@ export const ModeProvider = ({ children }) => {
     return localStorage.getItem('tjp_active_mode') || 'justchill';
   });
 
+  const [practiceDefaults, setPracticeDefaults] = useState({ pair: '', risk: '', date: '' });
+
   useEffect(() => {
     localStorage.setItem('tjp_active_mode', mode);
   }, [mode]);
@@ -18,8 +20,12 @@ export const ModeProvider = ({ children }) => {
     setMode(newMode);
   };
 
+  const updatePracticeDefaults = (newData) => {
+    setPracticeDefaults(prev => ({ ...prev, ...newData }));
+  };
+
   return (
-    <ModeContext.Provider value={{ mode, switchMode }}>
+    <ModeContext.Provider value={{ mode, switchMode, practiceDefaults, updatePracticeDefaults }}>
       {children}
     </ModeContext.Provider>
   );

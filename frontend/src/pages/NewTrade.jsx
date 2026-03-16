@@ -57,15 +57,16 @@ function playWarning() {
 
 export default function NewTrade({ editTrade, onDone }) {
   const nav = useNavigate();
-  const { mode } = useMode();
+  const { mode, practiceDefaults, updatePracticeDefaults } = useMode();
   const isEdit = !!editTrade?.id;
 
 
   const [model,  setModel]  = useState(editTrade?.model  || 'Model 1');
-  const [pair,   setPair]   = useState(editTrade?.pair   || '');
-  const [date,   setDate]   = useState(editTrade?.date   || new Date().toISOString().slice(0,10));
+  const [pair,   setPair]   = useState(() => editTrade?.pair || (mode === 'practice' && !isEdit ? practiceDefaults.pair : ''));
+  const [date,   setDate]   = useState(() => editTrade?.date || (mode === 'practice' && !isEdit && practiceDefaults.date ? practiceDefaults.date : new Date().toISOString().slice(0,10)));
   const [dir,    setDir]    = useState(editTrade?.direction || 'Buy');
-  const [risk,   setRisk]   = useState(editTrade?.risk_percent || '');
+  const [risk,   setRisk]   = useState(() => editTrade?.risk_percent?.toString() || (mode === 'practice' && !isEdit ? practiceDefaults.risk : ''));
+  const [session,setSession]= useState(editTrade?.session || '');
   const [cl,     setCl]     = useState(() => {
     if (editTrade?.checklist) return typeof editTrade.checklist === 'string' ? JSON.parse(editTrade.checklist) : editTrade.checklist;
     return {};
@@ -113,6 +114,7 @@ export default function NewTrade({ editTrade, onDone }) {
       const payload = { 
         pair: pair.toUpperCase(), 
         date, 
+        session: isPractice ? session.trim() : null,
         direction: dir, 
         risk_percent: rp, 
         model: isPractice ? 'Practice Model' : model, 
@@ -124,6 +126,11 @@ export default function NewTrade({ editTrade, onDone }) {
       };
       if (isEdit) await api.put(`/trades/${editTrade.id}`, payload);
       else        await api.post('/trades', payload);
+
+      if (isPractice) {
+        updatePracticeDefaults({ pair: pair.toUpperCase(), risk: risk, date: date });
+      }
+
       if (onDone) onDone(); else nav('/journal');
     } catch(ex) {
       const lt = ex.response?.data?.limitType;
@@ -182,6 +189,17 @@ export default function NewTrade({ editTrade, onDone }) {
             <select value={dir} onChange={e=>setDir(e.target.value)}><option>Buy</option><option>Sell</option></select>
           </div>
           <div className="field"><label>Risk % *</label><input type="number" value={risk} onChange={e=>setRisk(e.target.value)} placeholder="1.0" min="0.01" max="5" step="0.01"/></div>
+          {mode === 'practice' && (
+            <div className="field">
+              <label>Session</label>
+              <input list="session-opts" value={session} onChange={e=>setSession(e.target.value)} placeholder="Select or type..." autoComplete="off"/>
+              <datalist id="session-opts">
+                <option value="London"/>
+                <option value="New York"/>
+                <option value="Asian"/>
+              </datalist>
+            </div>
+          )}
         </div>
       </div>
 

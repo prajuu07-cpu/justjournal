@@ -10,7 +10,7 @@ export default function ModelBuilder() {
   const [name, setName] = useState('');
   const [checklist, setChecklist] = useState([]);
   const [modelNotes, setModelNotes] = useState('');
-  const [newItem, setNewItem] = useState({ label: '', weight: '', notes: '' });
+  const [newItem, setNewItem] = useState({ label: '', weight: '' });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -23,8 +23,8 @@ export default function ModelBuilder() {
   const addItem = () => {
     if (newItem.label.trim()) {
       const w = parseInt(newItem.weight) || 0;
-      setChecklist([...checklist, { ...newItem, label: newItem.label.trim(), weight: w }]);
-      setNewItem({ label: '', weight: '', notes: '' });
+      setChecklist([...checklist, { label: newItem.label.trim(), weight: w }]);
+      setNewItem({ label: '', weight: '' });
     }
   };
 
@@ -137,16 +137,6 @@ export default function ModelBuilder() {
               />
             </div>
           </div>
-          <div className="field">
-            <label style={{fontSize: '0.75rem', color: '#64748b'}}>Description / Notes (Optional)</label>
-            <textarea 
-              value={newItem.notes} 
-              onChange={e => setNewItem({...newItem, notes: e.target.value})} 
-              placeholder="Explain the criteria for this rule..."
-              rows={2}
-              style={{background: '#fff', fontSize: '0.9rem', resize: 'vertical'}}
-            />
-          </div>
           <button className="btn btn-ok" onClick={addItem} style={{width:'100%'}}>+ Add to Checklist</button>
         </div>
 
@@ -166,7 +156,6 @@ export default function ModelBuilder() {
                   <button className="btn-icon" style={{color: '#e11d48'}} onClick={() => removeItem(i)}>🗑</button>
                 </div>
               </div>
-              {item.notes && <div style={{fontSize:'0.8rem', color:'#64748b', fontStyle:'italic', borderTop: '1px solid #f1f5f9', paddingTop: 6, marginTop: 2}}>{item.notes}</div>}
             </div>
           ))}
           {checklist.length === 0 && <div style={{textAlign:'center', color:'#999', padding:'40px', background: '#f8fafc', borderRadius: 12, border: '2px dashed #e2e8f0'}}>No items added yet</div>}

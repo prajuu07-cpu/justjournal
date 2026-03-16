@@ -301,7 +301,6 @@ export default function NewTrade({ editTrade, onDone }) {
                   <span className="ci-lbl">{item.label}{(item.optional && item.key !== 'sync2H') && <span className="ci-opt"> (optional)</span>}</span>
                   <span className="ci-pts">{Math.round(item.weight)}pts</span>
                 </div>
-                {item.notes && <div style={{fontSize:'0.75rem', color:'#666', fontStyle:'italic', marginLeft:'28px', marginTop:'4px'}}>{item.notes}</div>}
               </div>
             );
           })}

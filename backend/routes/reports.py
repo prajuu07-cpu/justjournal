@@ -5,11 +5,11 @@ GET /api/reports/monthly/<year>/<month>
 GET /api/reports/yearly
 GET /api/reports/dashboard
 """
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from bson import ObjectId
 from db import get_db
-from utils import calculate_avg_rr
+from utils import calculate_avg_rr, get_mode
 
 reports_bp = Blueprint("reports", __name__)
 
@@ -26,16 +26,22 @@ def _fmt(doc: dict) -> dict:
 def monthly():
     uid  = ObjectId(get_jwt_identity())
     db   = get_db()
-    docs = list(db.monthly_reports.find({"user_id": uid}).sort([("year", -1), ("month", -1)]))
+    mode = get_mode()
+    
+    filt = {"user_id": uid, "mode": mode}
+    docs = list(db.monthly_reports.find(filt).sort([("year", -1), ("month", -1)]))
     return jsonify(reports=[_fmt(d) for d in docs])
 
 
 @reports_bp.get("/monthly/<int:year>/<int:month>")
 @jwt_required()
 def monthly_one(year, month):
-    uid = ObjectId(get_jwt_identity())
-    db  = get_db()
-    doc = db.monthly_reports.find_one({"user_id": uid, "year": year, "month": month})
+    uid  = ObjectId(get_jwt_identity())
+    db   = get_db()
+    mode = get_mode()
+
+    filt = {"user_id": uid, "year": year, "month": month, "mode": mode}
+    doc = db.monthly_reports.find_one(filt)
     if not doc:
         return jsonify(error="Not found"), 404
     return jsonify(report=_fmt(doc))
@@ -46,28 +52,34 @@ def monthly_one(year, month):
 def yearly():
     uid  = ObjectId(get_jwt_identity())
     db   = get_db()
-    docs = list(db.yearly_reports.find({"user_id": uid}).sort("year", -1))
+    mode = get_mode()
+
+    filt = {"user_id": uid, "mode": mode}
+    docs = list(db.yearly_reports.find(filt).sort("year", -1))
     return jsonify(reports=[_fmt(d) for d in docs])
 
 
 @reports_bp.get("/dashboard")
 @jwt_required()
 def dashboard():
-    uid = ObjectId(get_jwt_identity())
-    db  = get_db()
+    uid  = ObjectId(get_jwt_identity())
+    db   = get_db()
+    mode = get_mode()
 
-    final_trades = list(db.trades.find({
+    trade_filt = {
         "user_id": uid,
+        "mode":    mode,
         "status":  "final",
         "result":  {"$in": ["Win", "Loss", "Breakeven"]},
-    }).sort("date", 1))
+    }
+    final_trades = list(db.trades.find(trade_filt).sort("date", 1))
 
-    print(f"[DEBUG reports/dashboard] User: {uid} | Final trades found: {len(final_trades)}")
-    for i, t in enumerate(final_trades[:5]):
-        print(f"  [DASH] Trade {i+1}: {t.get('date')} | {t.get('pair')} | {t.get('direction')} | {t.get('result')}")
-
-    final_count  = len(final_trades)
-    total_trades = db.trades.count_documents({"user_id": uid})
+    print(f"[DEBUG reports/dashboard] User: {uid} | Mode: {mode} | Final trades: {len(final_trades)}")
+    
+    final_count = len(final_trades)
+    
+    total_filt = {"user_id": uid, "mode": mode}
+    total_trades = db.trades.count_documents(total_filt)
 
     if not final_count:
         return jsonify(
@@ -78,17 +90,16 @@ def dashboard():
 
     wins = sum(1 for t in final_trades if t["result"] == "Win")
 
-    win_rate = round(wins / final_count * 100, 2)
-    net_pnl  = round(sum(float(t.get("pnl_percentage") or 0) for t in final_trades), 4)
-
+    win_rate = round(float(wins / final_count * 100), 2)
+    net_pnl  = round(float(sum(float(t.get("pnl_percentage") or 0) for t in final_trades)), 4)
 
     equity = peak = 100.0
     max_dd = 0.0
     for t in final_trades:
-        equity *= (1 + float(t.get("pnl_percentage") or 0) / 100)
+        equity *= (1.0 + float(t.get("pnl_percentage") or 0) / 100.0)
         if equity > peak:
             peak = equity
-        dd = (peak - equity) / peak * 100
+        dd = float(peak - equity) / float(peak) * 100.0
         if dd > max_dd:
             max_dd = dd
 
@@ -100,7 +111,7 @@ def dashboard():
         else:
             streak = 0
 
-    # Phase 1 & 2: Avg RR Rebuild (Isolated Compute Layer)
+    # Avg RR using Isolated Compute Layer
     avg_rr = calculate_avg_rr(final_trades)
 
     # Equity Curve Data
@@ -108,7 +119,7 @@ def dashboard():
     curr_equity = 0.0
     for t in final_trades:
         curr_equity += float(t.get("pnl_percentage") or 0)
-        equity_curve.append(round(curr_equity, 2))
+        equity_curve.append(round(float(curr_equity), 2))
 
     # Result Distribution
     distribution = {
@@ -123,7 +134,7 @@ def dashboard():
         winRate=win_rate if win_rate is not None else 0,
         netPNL=net_pnl if net_pnl is not None else 0,
         avgRR=avg_rr if (avg_rr is not None and avg_rr != "—") else "—",
-        maxDrawdown=round(max_dd, 2),
+        maxDrawdown=round(float(max_dd), 2),
         maxLossStreak=max_streak,
         equityCurve=equity_curve,
         distribution=distribution,

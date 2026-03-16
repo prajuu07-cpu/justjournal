@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import NewTrade from './NewTrade';
 import { formatDate } from '../utils/dateHelper';
+import { useMode } from '../context/ModeContext';
 
 export default function Journal() {
   const nav = useNavigate();
+  const { mode } = useMode();
   const [trades,    setTrades]    = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [editing,   setEditing]   = useState(null);
@@ -15,15 +17,16 @@ export default function Journal() {
 
   const load = useCallback(() => {
     setLoading(true);
-    const q = new URLSearchParams();
-    if (filter.model  !== 'All') q.set('model',  filter.model);
-    if (filter.grade  !== 'All') q.set('grade',  filter.grade);
-    if (filter.result !== 'All') q.set('result', filter.result);
-    api.get(`/trades?${q}`)
+    const params = { mode };
+    if (filter.model  !== 'All') params.model = filter.model;
+    if (filter.grade  !== 'All') params.grade = filter.grade;
+    if (filter.result !== 'All') params.result = filter.result;
+
+    api.get('/trades', { params })
       .then(r => setTrades(r.data.trades))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [filter]);
+  }, [filter, mode]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -71,7 +74,7 @@ export default function Journal() {
       {/* Filters */}
       <div className="filter-bar">
         {[
-          { key: 'model',  opts: ['All', 'Model 1', 'Model 2'] },
+          { key: 'model',  opts: mode === 'practice' ? ['All', 'Practice Model'] : ['All', 'Model 1', 'Model 2'] },
           { key: 'grade',  opts: ['All', 'A+', 'A', 'Draft'] },
           { key: 'result', opts: ['All', 'Win', 'Loss', 'Breakeven'] },
         ].map(f => (
@@ -115,7 +118,7 @@ export default function Journal() {
                   <tr key={t.id} className={t.status === 'final' ? 'tr-final' : ''}>
                     <td>{formatDate(t.date)}</td>
                     <td><strong>{t.pair}</strong></td>
-                    <td><span className={`pill ${t.model === 'Model 2' ? 'pM2' : 'pM1'}`}>{t.model}</span></td>
+                    <td><span className={`pill ${t.model === 'Model 2' ? 'pM2' : t.model === 'Practice Model' ? 'pPM' : 'pM1'}`}>{t.model}</span></td>
                     <td><span className={`pill ${t.grade === 'A+' ? 'pAp' : t.grade === 'A' ? 'pB' : 'pLow'}`}>{t.grade}</span></td>
                     <td><span className={`pill ${t.status === 'final' ? 'pFin' : 'pDft'}`}>{t.status}</span></td>
                     <td className="mono">{t.r_multiple != null ? `${parseFloat(t.r_multiple).toFixed(2)}R` : '—'}</td>

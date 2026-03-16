@@ -14,6 +14,7 @@ from bson.errors import InvalidId
 from datetime import datetime, timezone, date, timedelta
 from typing import Optional
 from db import get_db
+from utils import get_mode
 from rebuild_reports import rebuild_reports
 
 trades_bp = Blueprint("trades", __name__)
@@ -43,7 +44,11 @@ MODEL2_WEIGHTS = {
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
+
+
 def _calc_score(model: str, cl: dict) -> int:
+    if model == "Practice Model":
+        return 100
     weights = MODEL1_WEIGHTS if model == "Model 1" else MODEL2_WEIGHTS
     return sum(w for k, w in weights.items() if cl.get(k))
 
@@ -78,18 +83,20 @@ def _oid(raw: str) -> Optional[ObjectId]:
 @trades_bp.get("/")
 @jwt_required()
 def list_trades():
-    uid = ObjectId(get_jwt_identity())
-    db  = get_db()
+    uid  = ObjectId(get_jwt_identity())
+    db   = get_db()
+    mode = get_mode()
 
-    filt: dict = {"user_id": uid}
+    # Base filter: same user AND same mode
+    filt = {"user_id": uid, "mode": mode}
+
     for key in ("model", "grade", "status", "result"):
         val = request.args.get(key)
         if val and val != "All":
             filt[key] = val
 
-    print(f"[DEBUG trades/list] User: {uid} | Filter: {filt}")
+    print(f"[DEBUG trades/list] User: {uid} | Mode: {mode} | Filter: {filt}")
     trades = list(db.trades.find(filt).sort([("date", -1), ("created_at", -1)]))
-    print(f"[DEBUG trades/list] Found: {len(trades)}")
     return jsonify(trades=[_trade_out(t) for t in trades])
 
 
@@ -97,13 +104,16 @@ def list_trades():
 @trades_bp.get("/<trade_id>")
 @jwt_required()
 def get_trade(trade_id):
-    uid = ObjectId(get_jwt_identity())
-    db  = get_db()
-    oid = _oid(trade_id)
+    uid  = ObjectId(get_jwt_identity())
+    db   = get_db()
+    oid  = _oid(trade_id)
+    mode = get_mode()
+
     if not oid:
         return jsonify(error="Invalid ID"), 400
 
-    doc = db.trades.find_one({"_id": oid, "user_id": uid})
+    # For detail view, we also filter by user to ensure security
+    doc = db.trades.find_one({"_id": oid, "user_id": uid, "mode": mode})
     if not doc:
         return jsonify(error="Trade not found"), 404
     return jsonify(trade=_trade_out(doc))
@@ -115,6 +125,7 @@ def get_trade(trade_id):
 def create_trade():
     uid  = ObjectId(get_jwt_identity())
     db   = get_db()
+    mode = get_mode()
     data = request.get_json(silent=True) or {}
 
     pair       = (data.get("pair") or "").strip().upper()
@@ -138,13 +149,15 @@ def create_trade():
         return jsonify(error="Date must be YYYY-MM-DD"), 400
 
     try:
-        risk = float(risk_str)
+        risk = float(risk_str or 0.0)
         assert 0.01 <= risk <= 5
     except (TypeError, ValueError, AssertionError):
         return jsonify(error="Risk % must be between 0.01 and 5"), 400
 
-    if model not in ("Model 1", "Model 2"):
-        return jsonify(error="Model must be 'Model 1' or 'Model 2'"), 400
+    if mode == "justchill" and model not in ("Model 1", "Model 2"):
+        return jsonify(error="Model must be 'Model 1' or 'Model 2' for JustChill mode."), 400
+    if mode == "practice":
+        model = "Practice Model"
     if direction not in ("Buy", "Sell"):
         return jsonify(error="Direction must be Buy or Sell"), 400
     if status not in ("draft", "final"):
@@ -174,36 +187,37 @@ def create_trade():
                     return jsonify(error="Win needs a positive R multiple"), 400
                 pnl = _calc_pnl(risk, r_multiple)
 
-    # Weekly limit (Applies to ALL saves, including Drafts, Mon-Sun)
+    # Weekly limit (Siloed by mode)
     start, end = _week_bounds(d)
-    wcount = db.trades.count_documents({
+    w_filt = {
         "user_id": uid,
         "status":  "final",
         "date":    {"$gte": start, "$lte": end},
-    })
-    if wcount >= 2:
-        return jsonify(
-            limitType="weekly",
-            error="Weekly trade limit reached. Maximum 2 final trades per week.",
-        ), 422
+    }
+    w_filt["mode"] = mode
 
-    # Monthly loss limit (Applies to ALL saves, including Drafts)
+    wcount = db.trades.count_documents(w_filt)
+    if wcount >= 2:
+        return jsonify(limitType="weekly", error="Weekly limit reached (2 final trades)."), 422
+
+    # Monthly loss limit (Siloed by mode)
     ym = trade_date[:7]
-    lcount = db.trades.count_documents({
+    l_filt = {
         "user_id": uid,
         "status":  "final",
         "result":  "Loss",
         "date":    {"$regex": f"^{ym}"},
-    })
+    }
+    l_filt["mode"] = mode
+
+    lcount = db.trades.count_documents(l_filt)
     if lcount >= 5:
-        return jsonify(
-            limitType="monthly",
-            error="Monthly loss limit reached. 5 losses recorded this month.",
-        ), 422
+        return jsonify(limitType="monthly", error="Monthly loss limit reached (5 losses)."), 422
 
     now = _now_iso()
     doc = {
         "user_id":        uid,
+        "mode":           mode,
         "date":           trade_date,
         "pair":           pair,
         "model":          model,
@@ -238,7 +252,7 @@ def update_trade(trade_id):
     if not oid:
         return jsonify(error="Invalid ID"), 400
 
-    existing = db.trades.find_one({"_id": oid, "user_id": uid})
+    existing = db.trades.find_one({"_id": oid, "user_id": uid, "mode": get_mode()})
     if not existing:
         return jsonify(error="Trade not found"), 404
 
@@ -260,7 +274,7 @@ def update_trade(trade_id):
     except ValueError:
         return jsonify(error="Date must be YYYY-MM-DD"), 400
     try:
-        risk = float(risk_str)
+        risk = float(risk_str or 0.0)
         assert 0.01 <= risk <= 5
     except (TypeError, ValueError, AssertionError):
         return jsonify(error="Risk % must be between 0.01 and 5"), 400
@@ -289,30 +303,37 @@ def update_trade(trade_id):
         else:
             r_multiple, pnl = None, None
 
-    # Weekly limit (exclude self, Applies to ALL saves, including Drafts)
+    # Weekly limit (exclude self, Siloed by mode)
     start, end = _week_bounds(d)
-    wcount = db.trades.count_documents({
+    w_filt = {
         "user_id": uid,
         "status":  "final",
         "date":    {"$gte": start, "$lte": end},
         "_id":     {"$ne": oid},
-    })
-    if wcount >= 2:
-        return jsonify(limitType="weekly", error="Weekly trade limit reached."), 422
+    }
+    mode = existing.get("mode", "justchill")
+    w_filt["mode"] = mode
 
-    # Monthly loss limit (Applies to ALL saves, including Drafts)
+    wcount = db.trades.count_documents(w_filt)
+    if wcount >= 2:
+        return jsonify(limitType="weekly", error="Weekly limit reached."), 422
+
+    # Monthly loss limit (Siloed by mode)
     ym = trade_date[:7]
-    lcount = db.trades.count_documents({
+    l_filt = {
         "user_id": uid,
         "status":  "final",
         "result":  "Loss",
         "date":    {"$regex": f"^{ym}"},
         "_id":     {"$ne": oid},
-    })
+    }
+    l_filt["mode"] = mode
+
+    lcount = db.trades.count_documents(l_filt)
     if lcount >= 5:
         return jsonify(limitType="monthly", error="Monthly loss limit reached."), 422
 
-    db.trades.update_one({"_id": oid}, {"$set": {
+    db.trades.update_one({"_id": oid, "user_id": uid, "mode": get_mode()}, {"$set": {
         "pair":           pair,
         "date":           trade_date,
         "model":          model,
@@ -345,7 +366,7 @@ def add_result(trade_id):
     if not oid:
         return jsonify(error="Invalid ID"), 400
 
-    existing = db.trades.find_one({"_id": oid, "user_id": uid})
+    existing = db.trades.find_one({"_id": oid, "user_id": uid, "mode": get_mode()})
     if not existing:
         return jsonify(error="Trade not found"), 404
 
@@ -368,7 +389,7 @@ def add_result(trade_id):
     else: # Win
         pnl = _calc_pnl(existing.get("risk_percent", 1.0), r_multiple)
 
-    db.trades.update_one({"_id": oid}, {"$set": {
+    db.trades.update_one({"_id": oid, "user_id": uid, "mode": get_mode()}, {"$set": {
         "result":         result,
         "r_multiple":     r_multiple,
         "pnl_percentage": pnl,
@@ -389,7 +410,7 @@ def delete_trade(trade_id):
     if not oid:
         return jsonify(error="Invalid ID"), 400
 
-    res = db.trades.delete_one({"_id": oid, "user_id": uid})
+    res = db.trades.delete_one({"_id": oid, "user_id": uid, "mode": get_mode()})
     if res.deleted_count == 0:
         return jsonify(error="Trade not found"), 404
 
@@ -401,26 +422,28 @@ def delete_trade(trade_id):
 @trades_bp.delete("/drafts")
 @jwt_required()
 def delete_drafts():
-    uid = ObjectId(get_jwt_identity())
-    db  = get_db()
+    uid  = ObjectId(get_jwt_identity())
+    db   = get_db()
+    mode = get_mode()
     
-    res = db.trades.delete_many({
-        "user_id": uid,
-        "status":  "draft"
-    })
+    del_filt = {"user_id": uid, "status": "draft"}
+    del_filt["mode"] = mode
+
+    res = db.trades.delete_many(del_filt)
     
     if res.deleted_count > 0:
         rebuild_reports(str(uid))
         
-    return jsonify(message=f"Deleted {res.deleted_count} draft trades.")
+    return jsonify(message=f"Deleted {res.deleted_count} draft trades ({mode}).")
 
 
 # ── GET /api/trades/month/<year>/<month> ──────────────────────────────────────
 @trades_bp.get("/month/<int:year>/<int:month>")
 @jwt_required()
 def get_month_trades(year, month):
-    uid = ObjectId(get_jwt_identity())
-    db  = get_db()
+    uid  = ObjectId(get_jwt_identity())
+    db   = get_db()
+    mode = get_mode()
 
     ym_prefix = f"{year}-{month:02d}"
 
@@ -430,6 +453,8 @@ def get_month_trades(year, month):
         "status":  "final",
         "result":  {"$in": ["Win", "Loss", "Breakeven"]},
     }
+    query["mode"] = mode
+
     trades = list(db.trades.find(query).sort("date", 1))
 
     # Table output (newest first)
@@ -438,10 +463,10 @@ def get_month_trades(year, month):
     total  = len(trades)
     wins   = sum(1 for t in trades if t.get("result") == "Win")
     losses = sum(1 for t in trades if t.get("result") == "Loss")
-    win_rate = round(wins / total * 100, 2) if total else 0
+    win_rate = round(float(wins / total * 100), 2) if total else 0
 
 
-    net_pnl = round(sum(float(t.get("pnl_percentage") or 0) for t in trades), 4)
+    net_pnl = round(float(sum(float(t.get("pnl_percentage") or 0) for t in trades)), 4)
 
 
 
@@ -468,8 +493,8 @@ def get_month_trades(year, month):
                 "trade_count": 0,
                 "trades":      [],
             }
-        daily_breakdown[d_str]["net_pnl"]     = round(daily_breakdown[d_str]["net_pnl"] + pnl_v, 4)
-        daily_breakdown[d_str]["trade_count"] += 1
+        daily_breakdown[d_str]["net_pnl"]     = round(float(daily_breakdown[d_str]["net_pnl"]) + pnl_v, 4)
+        daily_breakdown[d_str]["trade_count"] = int(daily_breakdown[d_str]["trade_count"]) + 1
         daily_breakdown[d_str]["trades"].append({
             "id":           str(t.get("_id")),
             "pair":         t.get("pair"),
@@ -501,17 +526,21 @@ def get_month_trades(year, month):
 @trades_bp.get("/year/<int:year>")
 @jwt_required()
 def get_year_trades(year):
-    uid = ObjectId(get_jwt_identity())
-    db  = get_db()
+    uid  = ObjectId(get_jwt_identity())
+    db   = get_db()
+    mode = get_mode()
 
     y_prefix = f"{year}-"
     
-    trades = list(db.trades.find({
+    query = {
         "user_id": uid,
         "date":    {"$regex": f"^{y_prefix}"},
         "status":  "final",
         "result":  {"$in": ["Win", "Loss", "Breakeven"]},
-    }).sort("date", 1))
+    }
+    query["mode"] = mode
+
+    trades = list(db.trades.find(query).sort("date", 1))
 
     out_trades = [_trade_out(t) for t in reversed(trades)]
     final_trades = trades
@@ -519,10 +548,10 @@ def get_year_trades(year):
     total   = len(trades)
     wins    = sum(1 for t in trades if t.get("result") == "Win")
     losses  = sum(1 for t in trades if t.get("result") == "Loss")
-    win_rate = round(wins / total * 100, 2) if total else 0
+    win_rate = round(float(wins / total * 100), 2) if total else 0
 
 
-    net_pnl = round(sum(float(t.get("pnl_percentage") or 0) for t in trades), 4)
+    net_pnl = round(float(sum(float(t.get("pnl_percentage") or 0) for t in trades)), 4)
 
     monthly_breakdown = {m: 0.0 for m in range(1, 13)}
 

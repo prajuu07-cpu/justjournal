@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import { formatDate } from '../utils/dateHelper';
 import DailyPnLCalendar from '../components/DailyPnLCalendar';
+import { useMode } from '../context/ModeContext';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const YEARS = [2024, 2025, 2026, 2027];
@@ -16,6 +17,7 @@ function StatBadge({ label, value, cls='' }) {
 }
 
 export function MonthlyReports() {
+  const { mode } = useMode();
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [data, setData] = useState(null);
@@ -25,17 +27,22 @@ export function MonthlyReports() {
 
   useEffect(() => {
     setLoading(true); setErr('');
-    api.get(`/trades/month/${year}/${month}`)
+    api.get(`/trades/month/${year}/${month}`, { params: { mode } })
       .then(r => setData(r.data))
       .catch(e => setErr(e.message||'Failed to load'))
       .finally(() => setLoading(false));
-  }, [year, month]);
+  }, [year, month, mode]);
 
   const exportPDF = async () => {
     setExporting(true); setErr('');
     try {
-      const url = `/api/export/month/${year}/${month}`;
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${localStorage.getItem('tjp_token')}` } });
+      const url = `/api/export/month/${year}/${month}?mode=${localStorage.getItem('tjp_active_mode') || 'justchill'}`;
+      const res = await fetch(url, { 
+        headers: { 
+          Authorization: `Bearer ${localStorage.getItem('tjp_token')}`,
+          'X-Mode': localStorage.getItem('tjp_active_mode') || 'justchill'
+        } 
+      });
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();
       const objUrl = URL.createObjectURL(blob);
@@ -98,7 +105,9 @@ export function MonthlyReports() {
                 <tbody>
                   {data.trades.map(t=>(
                     <tr key={t.id} className={t.status === 'final' ? 'tr-final' : ''}>
-                      <td>{formatDate(t.date)}</td><td><strong>{t.pair}</strong></td>
+                      <td>{formatDate(t.date)}</td>
+                      <td><strong>{t.pair}</strong></td>
+                      <td><span className={`pill ${t.model === 'Model 2' ? 'pM2' : t.model === 'Practice Model' ? 'pPM' : 'pM1'}`}>{t.model}</span></td>
                       <td><span className={`pill ${t.grade==='A+'?'pAp':t.grade==='A'?'pB':'pLow'}`}>{t.grade}</span></td>
                       <td>{t.direction}</td><td>{t.risk_percent}%</td>
                       <td>{t.result?<span className={`pill ${t.result==='Win'?'pWin':t.result==='Loss'?'pLoss':'pBE'}`}>{t.result}</span>:'—'}</td>
@@ -117,6 +126,7 @@ export function MonthlyReports() {
 }
 
 export function YearlyReports() {
+  const { mode } = useMode();
   const [year, setYear] = useState(new Date().getFullYear());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -125,17 +135,22 @@ export function YearlyReports() {
 
   useEffect(() => {
     setLoading(true); setErr('');
-    api.get(`/trades/year/${year}`)
+    api.get(`/trades/year/${year}`, { params: { mode } })
       .then(r => setData(r.data))
       .catch(e => setErr(e.message||'Failed to load'))
       .finally(() => setLoading(false));
-  }, [year]);
+  }, [year, mode]);
 
   const exportPDF = async () => {
     setExporting(true); setErr('');
     try {
-      const url = `/api/export/year/${year}`;
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${localStorage.getItem('tjp_token')}` } });
+      const url = `/api/export/year/${year}?mode=${localStorage.getItem('tjp_active_mode') || 'justchill'}`;
+      const res = await fetch(url, { 
+        headers: { 
+          Authorization: `Bearer ${localStorage.getItem('tjp_token')}`,
+          'X-Mode': localStorage.getItem('tjp_active_mode') || 'justchill'
+        } 
+      });
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();
       const objUrl = URL.createObjectURL(blob);
@@ -202,6 +217,7 @@ export function YearlyReports() {
                   {data.trades.map(t=>(
                     <tr key={t.id} className={t.status === 'final' ? 'tr-final' : ''}>
                       <td>{formatDate(t.date)}</td><td><strong>{t.pair}</strong></td>
+                      <td><span className={`pill ${t.model === 'Model 2' ? 'pM2' : t.model === 'Practice Model' ? 'pPM' : 'pM1'}`}>{t.model}</span></td>
                       <td><span className={`pill ${t.grade==='A+'?'pAp':t.grade==='A'?'pB':'pLow'}`}>{t.grade}</span></td>
                       <td>{t.direction}</td><td>{t.risk_percent}%</td>
                       <td>{t.result?<span className={`pill ${t.result==='Win'?'pWin':t.result==='Loss'?'pLoss':'pBE'}`}>{t.result}</span>:'—'}</td>

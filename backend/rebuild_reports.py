@@ -31,9 +31,10 @@ def _rebuild(user_id: str):
             "result":  {"$in": ["Win", "Loss", "Breakeven"]},
         }))
 
-        # Group by (year, month)
+        # Group by (year, month, mode)
         monthly: dict = {}
         for t in trades:
+            mode = t.get("mode", "justchill")
             date_str = t.get("date", "").strip()
             if not date_str:
                 continue
@@ -47,30 +48,31 @@ def _rebuild(user_id: str):
                     continue
             
             if not d:
-                print(f"[rebuild_reports] Could not parse date: {repr(date_str)} for trade {t['_id']}")
+                print(f"[rebuild_reports] Could not parse date: {repr(date_str)}")
                 continue
 
-            key = (d.year, d.month)
+            key = (d.year, d.month, mode)
             monthly.setdefault(key, []).append(t)
 
         # Upsert monthly reports
-        for (year, month), mtrades in monthly.items():
+        for (year, month, mode), mtrades in monthly.items():
             wins       = sum(1 for t in mtrades if t["result"] == "Win")
             losses     = sum(1 for t in mtrades if t["result"] == "Loss")
             breakevens = sum(1 for t in mtrades if t["result"] == "Breakeven")
             total      = len(mtrades)
-            win_rate   = round(wins / total * 100, 2) if total else 0
+            win_rate   = round(float(wins / total * 100), 2) if total else 0
 
             net_pnl    = round(sum(float(t.get("pnl_percentage") or 0) for t in mtrades), 4)
             m1         = sum(1 for t in mtrades if t.get("model") == "Model 1")
             m2         = sum(1 for t in mtrades if t.get("model") == "Model 2")
 
             db.monthly_reports.update_one(
-                {"user_id": uid, "year": year, "month": month},
+                {"user_id": uid, "year": year, "month": month, "mode": mode},
                 {"$set": {
                     "user_id":       uid,
                     "year":          year,
                     "month":         month,
+                    "mode":          mode,
                     "total_trades":  total,
                     "wins":          wins,
                     "losses":        losses,
@@ -86,16 +88,16 @@ def _rebuild(user_id: str):
 
         # Upsert yearly reports
         yearly: dict = {}
-        for (year, month) in monthly:
-            yearly.setdefault(year, []).append(month)
+        for (year, month, mode) in monthly:
+            yearly.setdefault((year, mode), []).append(month)
 
-        for year in yearly:
-            m_docs     = list(db.monthly_reports.find({"user_id": uid, "year": year}))
+        for (year, mode) in yearly:
+            m_docs     = list(db.monthly_reports.find({"user_id": uid, "year": year, "mode": mode}))
             total      = sum(d["total_trades"]  for d in m_docs)
             wins       = sum(d["wins"]           for d in m_docs)
             losses     = sum(d["losses"]         for d in m_docs)
             breakevens = sum(d["breakevens"]     for d in m_docs)
-            win_rate   = round(wins / total * 100, 2) if total else 0
+            win_rate   = round(float(wins / total * 100), 2) if total else 0
 
             net_pnl    = round(sum(d["net_pnl"]  for d in m_docs), 4)
             m1         = sum(d["model1_trades"]  for d in m_docs)
@@ -103,10 +105,11 @@ def _rebuild(user_id: str):
             months_cov = sorted(d["month"] for d in m_docs)
 
             db.yearly_reports.update_one(
-                {"user_id": uid, "year": year},
+                {"user_id": uid, "year": year, "mode": mode},
                 {"$set": {
                     "user_id":        uid,
                     "year":           year,
+                    "mode":           mode,
                     "total_trades":   total,
                     "wins":           wins,
                     "losses":         losses,
@@ -121,16 +124,18 @@ def _rebuild(user_id: str):
                 upsert=True,
             )
 
-        # Clean up months/years that no longer have trades
-        active_months = set(monthly.keys())
-        for doc in list(db.monthly_reports.find({"user_id": uid}, {"_id": 1, "year": 1, "month": 1})):
-            if (doc["year"], doc["month"]) not in active_months:
+        # Clean up months/years that no longer have trades (mode-aware)
+        active_monthly = set(monthly.keys())
+        for doc in list(db.monthly_reports.find({"user_id": uid}, {"_id": 1, "year": 1, "month": 1, "mode": 1})):
+            m = doc.get("mode", "justchill")
+            if (doc["year"], doc["month"], m) not in active_monthly:
                 db.monthly_reports.delete_one({"_id": doc["_id"]})
 
-        active_years = {y for (y, _) in active_months}
-        for doc in list(db.yearly_reports.find({"user_id": uid}, {"_id": 1, "year": 1})):
-            if doc["year"] not in active_years:
+        active_yearly = set(yearly.keys())
+        for doc in list(db.yearly_reports.find({"user_id": uid}, {"_id": 1, "year": 1, "mode": 1})):
+            m = doc.get("mode", "justchill")
+            if (doc["year"], m) not in active_yearly:
                 db.yearly_reports.delete_one({"_id": doc["_id"]})
 
-    except Exception as e:
-        print(f"[rebuild_reports] error: {e}")
+    except Exception:
+        pass

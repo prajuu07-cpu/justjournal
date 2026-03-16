@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { useMode } from '../context/ModeContext';
 
 const MODEL1_ITEMS = [
   { key:'drawDailyTP',  label:'Draw Daily TP',                              weight:5,  optional:false },
@@ -56,6 +57,7 @@ function playWarning() {
 
 export default function NewTrade({ editTrade, onDone }) {
   const nav = useNavigate();
+  const { mode } = useMode();
   const isEdit = !!editTrade?.id;
 
 
@@ -92,9 +94,13 @@ export default function NewTrade({ editTrade, onDone }) {
     if (isNaN(rp)||rp<=0||rp>5) { setErr('Risk % must be 0.01–5'); return; }
     if (!asFinal && result) { setErr('Save to final trades'); return; }
 
-    if (asFinal && missing.length) { setErr('Check all required items before saving as Final'); return; }
-    if (asFinal && score < 75)     { setErr('Score must be ≥75 to save as Final'); return; }
-    if (asFinal && grade==='Draft' && !window.confirm('Grade is Draft — save anyway?')) return;
+    const isPractice = mode === 'practice';
+
+    if (asFinal && !isPractice) {
+      if (missing.length) { setErr('Check all required items before saving as Final'); return; }
+      if (score < 75)     { setErr('Score must be ≥75 to save as Final'); return; }
+      if (grade === 'Draft' && !window.confirm('Grade is Draft — save anyway?')) return;
+    }
 
     let rm=null, res_=result||null;
     if (asFinal && res_) {
@@ -104,7 +110,18 @@ export default function NewTrade({ editTrade, onDone }) {
 
     setBusy(true);
     try {
-      const payload = { pair:pair.toUpperCase(), date, direction:dir, risk_percent:rp, model, checklist:cl, notes, status:asFinal?'final':'draft', result:res_, r_multiple:rm };
+      const payload = { 
+        pair: pair.toUpperCase(), 
+        date, 
+        direction: dir, 
+        risk_percent: rp, 
+        model: isPractice ? 'Practice Model' : model, 
+        checklist: isPractice ? {} : cl, 
+        notes, 
+        status: asFinal ? 'final' : 'draft', 
+        result: res_, 
+        r_multiple: rm 
+      };
       if (isEdit) await api.put(`/trades/${editTrade.id}`, payload);
       else        await api.post('/trades', payload);
       if (onDone) onDone(); else nav('/journal');
@@ -138,21 +155,23 @@ export default function NewTrade({ editTrade, onDone }) {
         <div style={{display:'flex',gap:8}}>
           <button className="btn btn-ghost" onClick={()=>onDone?onDone():nav('/journal')}>Cancel</button>
           <button className="btn btn-ghost" onClick={()=>save(false)} disabled={busy}>Save Draft</button>
-          <button className="btn btn-ok"    onClick={()=>save(true)}  disabled={missing.length>0||score<75||busy}>Save Final</button>
+          <button className="btn btn-ok"    onClick={()=>save(true)}  disabled={(mode !== 'practice' && (missing.length>0||score<75)) || busy}>Save Final</button>
         </div>
       </div>
 
       {err && <div className="err-box">{err}</div>}
 
-      <div className="card">
-        <div className="form-sec">Model</div>
-        <div className="model-sel">
-          {['Model 1','Model 2'].map(m=>(
-            <button key={m} className={`mbtn${model===m?(m==='Model 1'?' sel-m1':' sel-m2'):''}`}
-              onClick={()=>{if(!isEdit)setModel(m);}} disabled={isEdit}>{m}</button>
-          ))}
+      {mode !== 'practice' && (
+        <div className="card">
+          <div className="form-sec">Model</div>
+          <div className="model-sel">
+            {['Model 1','Model 2'].map(m=>(
+              <button key={m} className={`mbtn${model===m?(m==='Model 1'?' sel-m1':' sel-m2'):''}`}
+                onClick={()=>{if(!isEdit)setModel(m);}} disabled={isEdit}>{m}</button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="card">
         <div className="form-sec">Trade Details</div>
@@ -166,33 +185,35 @@ export default function NewTrade({ editTrade, onDone }) {
         </div>
       </div>
 
-      <div className="card">
-        <div className="form-sec">Checklist — {model}</div>
-        {activeItems.map((item)=>{
-          const col = WEIGHT_COLORS[item.weight] || DEFAULT_COLOR;
-          return (
-            <div key={item.key} className={`ci${cl[item.key]?' on':''}`} onClick={()=>toggle(item.key)} 
-                 style={{'--ici': col.color, '--ibg': col.bg, '--irgb': col.rgb}}>
-              <div className="ci-box">{cl[item.key]&&<svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4.5l3.5 3.5L11 1" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div>
-              <span className="ci-lbl">{item.label}{(item.optional && item.key !== 'sync2H') && <span className="ci-opt"> (optional)</span>}</span>
-              <span className="ci-pts">{item.weight}pts</span>
+      {mode !== 'practice' && (
+        <div className="card">
+          <div className="form-sec">Checklist — {model}</div>
+          {activeItems.map((item)=>{
+            const col = WEIGHT_COLORS[item.weight] || DEFAULT_COLOR;
+            return (
+              <div key={item.key} className={`ci${cl[item.key]?' on':''}`} onClick={()=>toggle(item.key)} 
+                   style={{'--ici': col.color, '--ibg': col.bg, '--irgb': col.rgb}}>
+                <div className="ci-box">{cl[item.key]&&<svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4.5l3.5 3.5L11 1" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div>
+                <span className="ci-lbl">{item.label}{(item.optional && item.key !== 'sync2H') && <span className="ci-opt"> (optional)</span>}</span>
+                <span className="ci-pts">{item.weight}pts</span>
+              </div>
+            );
+          })}
+          {missing.length>0&&(
+            <div className="mand-warn" style={{ '--w-bg': theme.wBg, '--w-border': theme.wBorder, '--w-text': theme.wText, '--w-ul': theme.wUl }}>
+              <div><strong>Required before Final:</strong><ul>{missing.map(l=><li key={l}>{l}</li>)}</ul></div>
             </div>
-          );
-        })}
-        {missing.length>0&&(
-          <div className="mand-warn" style={{ '--w-bg': theme.wBg, '--w-border': theme.wBorder, '--w-text': theme.wText, '--w-ul': theme.wUl }}>
-            <div><strong>Required before Final:</strong><ul>{missing.map(l=><li key={l}>{l}</li>)}</ul></div>
+          )}
+          <div className="sc-blk">
+            <div className="sc-label">{model} · Setup Score</div>
+            <div className="sc-n" style={{color:barColor}}>{score}</div>
+            <div className="sc-bg"><div className="sc-fill" style={{width:`${score}%`,background:`linear-gradient(90deg,${barColor}88,${barColor})`}}/></div>
+            <div className="q-tag" style={{background:score>=90?'#ede9fe':score>=75?'#e0f2fe':'#fff1f2',color:score>=90?'#7c3aed':score>=75?'#0284c7':'#e11d48'}}>{grade}</div>
           </div>
-        )}
-        <div className="sc-blk">
-          <div className="sc-label">{model} · Setup Score</div>
-          <div className="sc-n" style={{color:barColor}}>{score}</div>
-          <div className="sc-bg"><div className="sc-fill" style={{width:`${score}%`,background:`linear-gradient(90deg,${barColor}88,${barColor})`}}/></div>
-          <div className="q-tag" style={{background:score>=90?'#ede9fe':score>=75?'#e0f2fe':'#fff1f2',color:score>=90?'#7c3aed':score>=75?'#0284c7':'#e11d48'}}>{grade}</div>
         </div>
-      </div>
+      )}
 
-      {score >= 75 && (
+      {(mode === 'practice' || score >= 75) && (
         <div className="card">
           <div className="form-sec">Result (optional — add after trade closes)</div>
           <div className="g2">

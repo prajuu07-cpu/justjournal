@@ -20,7 +20,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
 
 from db import get_db
-from utils import calculate_avg_rr
+from utils import calculate_avg_rr, get_mode
 
 export_bp = Blueprint("export", __name__)
 
@@ -496,14 +496,18 @@ def export_month_pdf(year, month):
     user     = db.users.find_one({"_id": uid}, {"username": 1})
     username = user["username"] if user else "unknown"
 
+    mode = get_mode()
     ym_prefix = f"{year}-{month:02d}"
 
-    trades = list(db.trades.find({
+    filt = {
         "user_id": uid,
+        "mode":    mode,
         "date":    {"$regex": f"^{ym_prefix}"},
         "status":  "final",
         "result":  {"$in": ["Win", "Loss", "Breakeven"]},
-    }).sort("date", 1))
+    }
+
+    trades = list(db.trades.find(filt).sort("date", 1))
 
     total  = len(trades)
     wins   = sum(1 for t in trades if _sf(t.get("pnl_percentage")) > 0)
@@ -566,14 +570,18 @@ def export_year_pdf(year):
     user     = db.users.find_one({"_id": uid}, {"username": 1})
     username = user["username"] if user else "unknown"
 
+    mode = get_mode()
     y_prefix = f"{year}-"
-
-    trades = list(db.trades.find({
+    
+    filt = {
         "user_id": uid,
+        "mode":    mode,
         "date":    {"$regex": f"^{y_prefix}"},
         "status":  "final",
         "result":  {"$in": ["Win", "Loss", "Breakeven"]},
-    }).sort("date", 1))
+    }
+
+    trades = list(db.trades.find(filt).sort("date", 1))
 
     total  = len(trades)
     wins   = sum(1 for t in trades if _sf(t.get("pnl_percentage")) > 0)

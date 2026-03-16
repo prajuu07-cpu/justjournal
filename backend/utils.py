@@ -1,3 +1,11 @@
+from flask import request
+
+def get_mode() -> str:
+    """Extract mode from params or X-Mode header."""
+    m = request.args.get("mode") or request.headers.get("X-Mode") or "justchill"
+    m = m.lower()
+    return m if m in ("justchill", "practice") else "justchill"
+
 def calculate_avg_rr(trades):
     """
     Isolated Compute Layer for Avg RR.

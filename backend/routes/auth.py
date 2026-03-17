@@ -38,6 +38,11 @@ def register():
         return jsonify(error="Password must be at least 6 characters"), 400
 
     db = get_db()
+    
+    # Strict Validation: Check if email already exists
+    if db.users.find_one({"email": email}):
+        return jsonify(error="An account is already registered with this email."), 409
+
     doc = {
         "email":         email,
         "username":      username,
@@ -68,8 +73,12 @@ def login():
 
     db  = get_db()
     doc = db.users.find_one({"email": email})
-    if not doc or not check_password_hash(doc["password_hash"], password):
-        return jsonify(error="Invalid email or password"), 401
+    
+    if not doc:
+        return jsonify(error="Account is not registered with this email."), 401
+    
+    if not check_password_hash(doc["password_hash"], password):
+        return jsonify(error="Incorrect password."), 401
 
     token = create_access_token(
         identity=str(doc["_id"]),

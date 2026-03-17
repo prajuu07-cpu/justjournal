@@ -1,4 +1,4 @@
-import { NavLink, useNavigate, Routes, Route, Navigate } from 'react-router-dom';
+import { NavLink, useNavigate, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Dashboard from '../pages/Dashboard';
 import NewTrade  from '../pages/NewTrade';
@@ -44,7 +44,7 @@ export default function DesktopLayout() {
         </div>
       </aside>
       <main className="main-content">
-        <ModeSwitch />
+        {!hideSwitch && <ModeSwitch />}
         <Routes>
           <Route path="/"          element={<Dashboard/>}/>
           <Route path="/new-trade" element={<NewTrade/>}/>

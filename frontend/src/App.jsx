@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ModeProvider, useMode } from './context/ModeContext';
 import Login    from './pages/Login';
 import Register from './pages/Register';
 import './styles.css';

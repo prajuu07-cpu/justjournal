@@ -5,7 +5,7 @@ import api from '../services/api';
 
 export default function ModelBuilder() {
   const nav = useNavigate();
-  const { addModel } = useMode();
+  const { addModel, mode } = useMode();
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [checklist, setChecklist] = useState([]);
@@ -206,7 +206,7 @@ export default function ModelBuilder() {
                       <div style={{display:'flex', gap:4}}>
                         <button className="btn-icon" onClick={() => moveItem(i, -1)} disabled={i===0}>↑</button>
                         <button className="btn-icon" onClick={() => moveItem(i, 1)} disabled={i===checklist.length-1}>↓</button>
-                        <button className="btn-icon" style={{color: '#e11d48'}} onClick={() => removeItem(i)}>🗑</button>
+                        <button className="btn-icon" style={{color: '#e11d48', fontWeight: 700, fontSize: '0.7rem'}} onClick={() => removeItem(i)}>DEL</button>
                       </div>
                     </div>
                   </div>

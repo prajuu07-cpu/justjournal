@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, useNavigate, Routes, Route, Navigate } from 'react-router-dom';
+import { NavLink, useNavigate, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Dashboard from '../pages/Dashboard';
 import NewTrade  from '../pages/NewTrade';
@@ -16,8 +16,9 @@ import { useMode } from '../context/ModeContext';
 export default function MobileLayout() {
   const { user, logout } = useAuth();
   const { mode } = useMode();
-  const nav = useNavigate();
   const [open, setOpen] = useState(false);
+  const location = useLocation();
+  const hideSwitch = location.pathname === '/model-builder';
 
   const toggle = () => setOpen(!open);
   const close = () => setOpen(false);
@@ -62,7 +63,7 @@ export default function MobileLayout() {
       </aside>
 
       <main className="m-content">
-        <ModeSwitch />
+        {!hideSwitch && <ModeSwitch />}
         <Routes>
           <Route path="/"          element={<Dashboard/>}/>
           <Route path="/new-trade" element={<NewTrade/>}/>

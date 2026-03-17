@@ -148,16 +148,37 @@
 }
 
 .m-content .page-hd {
-  flex-direction: column;
+  flex-direction: column !important;
   align-items: flex-start !important;
-  gap: 16px;
+  gap: 16px !important;
   margin-bottom: 24px !important;
 }
 
 .m-content .page-hd h1 {
-  font-size: 1.75rem !important;
+  font-size: 1.5rem !important;
 }
 
+/* Model Builder Responsiveness */
+.m-content .checklist-entry > div {
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.m-content .checklist-entry .field {
+  flex: 1 1 100% !important;
+}
+
+.m-content .ci-card > div {
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+}
+
+.m-content .ci-card .btn-icon {
+  width: 36px;
+  height: 36px;
+}
+
+/* Grid & Form Stacking */
 .m-content .g2 {
   grid-template-columns: 1fr !important;
   gap: 16px !important;
@@ -168,15 +189,24 @@
   gap: 12px !important;
 }
 
+.m-content .form-grid {
+  grid-template-columns: 1fr !important;
+  gap: 16px !important;
+}
+
+/* Tables */
 .m-content .tbl-wrap {
-  border-radius: 12px;
-  border: 1px solid var(--m-border);
-  margin: 0 -16px;
-  width: calc(100% + 32px);
   overflow-x: auto;
+  width: calc(100% + 32px);
+  margin: 0 -16px;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  -webkit-overflow-scrolling: touch;
 }
 
 .m-content .tbl {
+  font-size: 13px;
   min-width: 600px; /* Force horizontal scroll */
 }
 
@@ -191,8 +221,21 @@
 .m-content .ci-pts {
   margin-left: auto !important;
   margin-top: 0 !important;
+  font-size: 0.85rem !important;
+  font-weight: 800 !important;
 }
 
 .m-content .sc-blk {
   padding: 20px !important;
+}
+
+/* Calendar Polish */
+.m-content .dpnl-card {
+  padding: 12px !important;
+  margin-left: -16px;
+  margin-right: -16px;
+  width: calc(100% + 32px);
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
 }

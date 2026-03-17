@@ -7,7 +7,7 @@ import { useMode } from '../context/ModeContext';
 
 export default function Journal() {
   const nav = useNavigate();
-  const { mode } = useMode();
+  const { mode, customModels, userSettings } = useMode();
   const [trades,    setTrades]    = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [editing,   setEditing]   = useState(null);
@@ -101,31 +101,34 @@ export default function Journal() {
                 Delete ▾
               </button>
               {deleteOpen && (
-                <div style={{
-                  position: 'absolute', top: '110%', right: 0,
-                  background: 'var(--card)', border: '1px solid var(--border2)',
-                  borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-                  zIndex: 100, minWidth: 170, overflow: 'hidden'
-                }}>
+                <div 
+                  className="dropdown-menu"
+                  style={{
+                    position: 'absolute', top: '110%', left: 0,
+                    background: 'var(--card)', border: '1px solid var(--border2)',
+                    borderRadius: 12, boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                    zIndex: 100, minWidth: 180, overflow: 'hidden'
+                  }}
+                >
                   <button
-                    style={{ display:'block', width:'100%', padding:'10px 16px', textAlign:'left',
+                    style={{ display:'block', width:'100%', padding:'12px 16px', textAlign:'left',
                       background:'none', border:'none', cursor:'pointer', fontSize:14,
                       color:'var(--danger)', fontWeight:600 }}
-                    onMouseOver={e => e.currentTarget.style.background='#FEE2E2'}
+                    onMouseOver={e => e.currentTarget.style.background='var(--danger-bg)'}
                     onMouseOut={e => e.currentTarget.style.background='none'}
                     onClick={deleteDrafts}
                   >
-                    🗑 Delete Drafts
+                    Delete Drafts
                   </button>
                   <button
-                    style={{ display:'block', width:'100%', padding:'10px 16px', textAlign:'left',
+                    style={{ display:'block', width:'100%', padding:'12px 16px', textAlign:'left',
                       background:'none', border:'none', cursor:'pointer', fontSize:14,
                       color:'var(--danger)', fontWeight:600, borderTop:'1px solid var(--border)' }}
-                    onMouseOver={e => e.currentTarget.style.background='#FEE2E2'}
+                    onMouseOver={e => e.currentTarget.style.background='var(--danger-bg)'}
                     onMouseOut={e => e.currentTarget.style.background='none'}
                     onClick={deleteAllTrades}
                   >
-                    🗑 Delete All Trades
+                    Delete All Trades
                   </button>
                 </div>
               )}
@@ -138,20 +141,21 @@ export default function Journal() {
       </div>
 
       {/* Filters */}
-      <div className="filter-bar">
+      <div className="filter-bar" style={{ marginBottom: 24 }}>
         {[
           { 
             key: 'model',  
             opts: mode === 'practice' 
-              ? [{ label: 'All', value: 'All' }, { label: 'Practice', value: 'Practice' }] 
-              : [{ label: 'All', value: 'All' }, { label: 'Model 1', value: 'Model 1' }, { label: 'Model 2', value: 'Model 2' }]
+              ? [{ label: 'All Models', value: 'All' }, { label: 'Practice', value: 'Practice' }] 
+              : [{ label: 'All Models', value: 'All' }, { label: 'Model 1', value: 'Model 1' }, { label: 'Model 2', value: 'Model 2' }]
           },
-          { key: 'grade',  opts: (mode === 'practice' ? ['All', 'Draft'] : ['All', 'A+', 'A', 'Draft']).map(o => ({ label: o, value: o })) },
-          { key: 'result', opts: ['All', 'Win', 'Loss', 'Breakeven'].map(o => ({ label: o, value: o })) },
+          { key: 'grade',  opts: (mode === 'practice' ? ['All Grades', 'Draft'] : ['All Grades', 'A+', 'A', 'Draft']).map(o => ({ label: o, value: o })) },
+          { key: 'result', opts: ['All Results', 'Win', 'Loss', 'Breakeven'].map(o => ({ label: o, value: o })) },
         ].map(f => (
           <select
             key={f.key}
             className="fsel"
+            style={{ flex: '1 1 120px' }}
             value={filter[f.key]}
             onChange={e => setFilter(p => ({ ...p, [f.key]: e.target.value }))}
           >
@@ -233,8 +237,19 @@ export default function Journal() {
                           : '—'}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        <button className="btn btn-xs btn-ghost" onClick={() => setEditing(t)}>Edit</button>
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                        {(() => {
+                          const isBinned = (userSettings.binned_models || []).includes(t.model);
+                          const isCustomActive = customModels.some(cm => cm.name === t.model);
+                          const isBuiltin = t.model === 'Model 1' || t.model === 'Model 2';
+                          const isPractice = t.model === 'Practice' || t.model === 'Practice Model';
+                          
+                          const canEdit = isPractice || (isBuiltin && !isBinned) || isCustomActive;
+                          
+                          return canEdit && (
+                            <button className="btn btn-xs btn-ghost" onClick={() => setEditing(t)}>Edit</button>
+                          );
+                        })()}
                         <button className="btn btn-xs btn-danger" onClick={() => del(t.id)}>Del</button>
                       </div>
                     </td>

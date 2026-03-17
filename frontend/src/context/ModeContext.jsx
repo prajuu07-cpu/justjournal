@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api';
+import { useAuth } from './AuthContext';
 
 const ModeContext = createContext();
 
 export const useMode = () => useContext(ModeContext);
 
 export const ModeProvider = ({ children }) => {
+  const { user } = useAuth();
   const [mode, setMode] = useState(() => {
     return localStorage.getItem('tjp_active_mode') || 'justchill';
   });
@@ -41,9 +43,12 @@ export const ModeProvider = ({ children }) => {
         console.error("Failed to fetch settings", err);
       }
     };
-    fetchModels();
-    fetchSettings();
-  }, []);
+
+    if (user || localStorage.getItem('tjp_token')) {
+      fetchModels();
+      fetchSettings();
+    }
+  }, [user]);
 
   const switchMode = (newMode) => {
     localStorage.setItem('tjp_active_mode', newMode);

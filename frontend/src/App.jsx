@@ -33,8 +33,8 @@ export default function App() {
   const isMobile = width < 768;
 
   return (
-    <ModeProvider>
-      <AuthProvider>
+    <AuthProvider>
+      <ModeProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/login"    element={<Login/>}/>
@@ -46,7 +46,7 @@ export default function App() {
             }/>
           </Routes>
         </BrowserRouter>
-      </AuthProvider>
-    </ModeProvider>
+      </ModeProvider>
+    </AuthProvider>
   );
 }

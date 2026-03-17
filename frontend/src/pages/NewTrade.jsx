@@ -277,7 +277,7 @@ export default function NewTrade({ editTrade, onDone }) {
       {limitModal && (
         <div className="lim-ov" onClick={()=>setLimitModal('')}>
           <div className="lim-box" onClick={e=>e.stopPropagation()}>
-            <div className="lim-top"><div className="lim-icon">⚠️</div>
+            <div className="lim-top">{mode !== 'practice' && <div className="lim-icon">⚠️</div>}
               <div className="lim-title">{limitModal==='weekly'?'Weekly Limit Reached':'Monthly Loss Limit Reached'}</div>
             </div>
             <div className="lim-body">
@@ -306,7 +306,7 @@ export default function NewTrade({ editTrade, onDone }) {
 
       {err && (
         <div className="err-box" style={{marginBottom:24, justifyContent: 'center'}}>
-          <span>⚠️</span>
+          {mode !== 'practice' && <span>⚠️</span>}
           {err}
         </div>
       )}

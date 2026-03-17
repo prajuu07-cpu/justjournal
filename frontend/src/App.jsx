@@ -24,28 +24,38 @@ function Protected({ children }) {
   return user ? children : <Navigate to="/login" replace/>;
 }
 
-import { ModeProvider } from './context/ModeContext';
-
 // ... (keep useWindowSize and Protected as is)
 
-export default function App() {
+function AppInterior() {
+  const { user } = useAuth();
+  const { refreshData } = useMode();
   const [width] = useWindowSize();
   const isMobile = width < 768;
 
+  useEffect(() => {
+    if (user) refreshData();
+  }, [user]);
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login"    element={<Login/>}/>
+        <Route path="/register" element={<Register/>}/>
+        <Route path="/*" element={
+          <Protected>
+            {isMobile ? <MobileLayout/> : <DesktopLayout/>}
+          </Protected>
+        }/>
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default function App() {
   return (
     <AuthProvider>
       <ModeProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login"    element={<Login/>}/>
-            <Route path="/register" element={<Register/>}/>
-            <Route path="/*" element={
-              <Protected>
-                {isMobile ? <MobileLayout/> : <DesktopLayout/>}
-              </Protected>
-            }/>
-          </Routes>
-        </BrowserRouter>
+        <AppInterior />
       </ModeProvider>
     </AuthProvider>
   );

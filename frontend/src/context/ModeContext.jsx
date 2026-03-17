@@ -1,13 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api';
-import { useAuth } from './AuthContext';
 
 const ModeContext = createContext();
 
 export const useMode = () => useContext(ModeContext);
 
 export const ModeProvider = ({ children }) => {
-  const { user } = useAuth();
   const [mode, setMode] = useState(() => {
     return localStorage.getItem('tjp_active_mode') || 'justchill';
   });
@@ -26,29 +24,27 @@ export const ModeProvider = ({ children }) => {
     localStorage.setItem('tjp_active_mode', mode);
   }, [mode]);
 
-  useEffect(() => {
-    const fetchModels = async () => {
-      try {
-        const { data } = await api.get('/custom-models');
-        setCustomModels(data);
-      } catch (err) {
-        console.error("Failed to fetch models", err);
-      }
-    };
-    const fetchSettings = async () => {
-      try {
-        const { data } = await api.get('/settings');
-        setUserSettings(data);
-      } catch (err) {
-        console.error("Failed to fetch settings", err);
-      }
-    };
-
-    if (user || localStorage.getItem('tjp_token')) {
-      fetchModels();
-      fetchSettings();
+  const refreshData = async () => {
+    if (!localStorage.getItem('tjp_token')) return;
+    try {
+      const [{ data: models }, { data: settings }] = await Promise.all([
+        api.get('/custom-models'),
+        api.get('/settings')
+      ]);
+      setCustomModels(models);
+      setUserSettings(settings);
+    } catch (err) {
+      console.error("Failed to refresh data", err);
     }
-  }, [user]);
+  };
+
+  useEffect(() => {
+    localStorage.setItem('tjp_active_mode', mode);
+  }, [mode]);
+
+  useEffect(() => {
+    refreshData();
+  }, []);
 
   const switchMode = (newMode) => {
     localStorage.setItem('tjp_active_mode', newMode);
@@ -152,7 +148,8 @@ export const ModeProvider = ({ children }) => {
       restoreModel,
       emptyBin,
       userSettings,
-      updateSettings
+      updateSettings,
+      refreshData
     }}>
       {children}
     </ModeContext.Provider>

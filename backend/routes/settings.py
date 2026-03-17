@@ -13,15 +13,14 @@ def get_settings():
     
     settings = db.user_settings.find_one({"user_id": uid})
     if not settings:
-        # Return default hardcoded values if not set yet
-        return jsonify({
-            "weekly_limit": 2,
-            "monthly_loss_limit": 5
-        })
+        settings = {}
         
     return jsonify({
         "weekly_limit": settings.get("weekly_limit", 2),
-        "monthly_loss_limit": settings.get("monthly_loss_limit", 5)
+        "monthly_loss_limit": settings.get("monthly_loss_limit", 5),
+        "hidden_models": settings.get("hidden_models", []),
+        "binned_models": settings.get("binned_models", []),
+        "archived_models": settings.get("archived_models", [])
     })
 
 @settings_bp.route('', methods=['POST'])
@@ -34,8 +33,13 @@ def update_settings():
     weekly_limit = data.get("weekly_limit")
     monthly_loss_limit = data.get("monthly_loss_limit")
     
-    if weekly_limit is None or monthly_loss_limit is None:
-        return jsonify(error="Weekly and monthly limits are required"), 400
+    # Use existing settings if fields are missing
+    existing = db.user_settings.find_one({"user_id": uid}) or {}
+    
+    if weekly_limit is None:
+        weekly_limit = existing.get("weekly_limit", 2)
+    if monthly_loss_limit is None:
+        monthly_loss_limit = existing.get("monthly_loss_limit", 5)
         
     try:
         weekly_limit = int(weekly_limit)
@@ -47,9 +51,21 @@ def update_settings():
         {"user_id": uid},
         {"$set": {
             "weekly_limit": weekly_limit,
-            "monthly_loss_limit": monthly_loss_limit
+            "monthly_loss_limit": monthly_loss_limit,
+            "hidden_models": data.get("hidden_models", []),
+            "binned_models": data.get("binned_models", []),
+            "archived_models": data.get("archived_models", [])
         }},
         upsert=True
     )
     
-    return jsonify(message="Settings updated successfully")
+    return jsonify({
+        "message": "Settings updated successfully",
+        "settings": {
+            "weekly_limit": weekly_limit,
+            "monthly_loss_limit": monthly_loss_limit,
+            "hidden_models": data.get("hidden_models", []),
+            "binned_models": data.get("binned_models", []),
+            "archived_models": data.get("archived_models", [])
+        }
+    })

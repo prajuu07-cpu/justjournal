@@ -5,7 +5,8 @@ import DailyPnLCalendar from '../components/DailyPnLCalendar';
 import { useMode } from '../context/ModeContext';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const YEARS = [2024, 2025, 2026, 2027];
+const _cy = new Date().getFullYear();
+const YEARS = Array.from({ length: 10 }, (_, i) => _cy - i);
 
 function StatBadge({ label, value, cls='' }) {
   return (
@@ -108,7 +109,33 @@ export function MonthlyReports() {
                       <td>{formatDate(t.date)}</td>
                       <td><strong>{t.pair}</strong></td>
                       {mode === 'practice' && <td>{t.session || '—'}</td>}
-                      <td><span className={`pill ${t.model === 'Model 2' ? 'pM2' : t.model === 'Practice Model' ? 'pPM' : 'pM1'}`}>{t.model === 'Practice Model' ? 'Practice' : t.model}</span></td>
+                      <td>
+                        <span 
+                          className={`pill ${
+                            t.model === 'Practice' || t.model === 'Practice Model' ? 'pPM' :
+                            t.model === 'Model 2' ? 'pM2' :
+                            t.model?.toLowerCase() === 'model 3' ? 'pM3' : 'pM1'
+                          }`}
+                          style={
+                            t.model === 'Practice' || t.model === 'Practice Model' ? {} :
+                            t.model_color ? {
+                              backgroundColor: t.model_color.bg,
+                              color: t.model_color.text,
+                              borderColor: t.model_color.border,
+                              borderWidth: '1px',
+                              borderStyle: 'solid'
+                            } : (t.model?.toLowerCase() === 'model 3' ? {
+                              backgroundColor: '#FDF2F8',
+                              color: '#DB2777',
+                              borderColor: '#FCE7F3',
+                              borderWidth: '1px',
+                              borderStyle: 'solid'
+                            } : {})
+                          }
+                        >
+                          {t.model === 'Practice Model' ? 'Practice' : t.model}
+                        </span>
+                      </td>
                       {mode !== 'practice' && <td><span className={`pill ${t.grade==='A+'?'pAp':t.grade==='A'?'pB':'pLow'}`}>{t.grade}</span></td>}
                       <td>{t.direction}</td><td>{t.risk_percent}%</td>
                       <td>{t.result?<span className={`pill ${t.result==='Win'?'pWin':t.result==='Loss'?'pLoss':'pBE'}`}>{t.result}</span>:'—'}</td>
@@ -219,7 +246,33 @@ export function YearlyReports() {
                     <tr key={t.id} className={t.status === 'final' ? 'tr-final' : ''}>
                       <td>{formatDate(t.date)}</td><td><strong>{t.pair}</strong></td>
                       {mode === 'practice' && <td>{t.session || '—'}</td>}
-                      <td><span className={`pill ${t.model === 'Model 2' ? 'pM2' : t.model === 'Practice Model' ? 'pPM' : 'pM1'}`}>{t.model === 'Practice Model' ? 'Practice' : t.model}</span></td>
+                      <td>
+                        <span 
+                          className={`pill ${
+                            t.model === 'Practice' || t.model === 'Practice Model' ? 'pPM' :
+                            t.model === 'Model 2' ? 'pM2' :
+                            t.model?.toLowerCase() === 'model 3' ? 'pM3' : 'pM1'
+                          }`}
+                          style={
+                            t.model === 'Practice' || t.model === 'Practice Model' ? {} :
+                            t.model_color ? {
+                              backgroundColor: t.model_color.bg,
+                              color: t.model_color.text,
+                              borderColor: t.model_color.border,
+                              borderWidth: '1px',
+                              borderStyle: 'solid'
+                            } : (t.model?.toLowerCase() === 'model 3' ? {
+                              backgroundColor: '#FDF2F8',
+                              color: '#DB2777',
+                              borderColor: '#FCE7F3',
+                              borderWidth: '1px',
+                              borderStyle: 'solid'
+                            } : {})
+                          }
+                        >
+                          {t.model === 'Practice Model' ? 'Practice' : t.model}
+                        </span>
+                      </td>
                       {mode !== 'practice' && <td><span className={`pill ${t.grade==='A+'?'pAp':t.grade==='A'?'pB':'pLow'}`}>{t.grade}</span></td>}
                       <td>{t.direction}</td><td>{t.risk_percent}%</td>
                       <td>{t.result?<span className={`pill ${t.result==='Win'?'pWin':t.result==='Loss'?'pLoss':'pBE'}`}>{t.result}</span>:'—'}</td>

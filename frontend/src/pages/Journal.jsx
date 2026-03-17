@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import NewTrade from './NewTrade';
@@ -14,6 +14,20 @@ export default function Journal() {
   const [filter,    setFilter]    = useState({ model: 'All', grade: 'All', result: 'All' });
   const [addResult, setAddResult] = useState(null); // { trade, result:'', rMult:'' }
   const [err,       setErr]       = useState('');
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const deleteRef = useRef(null);
+
+  // Close delete dropdown when clicking outside
+  useEffect(() => {
+    if (!deleteOpen) return;
+    const handleClickOutside = (e) => {
+      if (deleteRef.current && !deleteRef.current.contains(e.target)) {
+        setDeleteOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [deleteOpen]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -37,12 +51,24 @@ export default function Journal() {
   };
 
   const deleteDrafts = async () => {
+    setDeleteOpen(false);
     if (!window.confirm('Delete all draft trades? This cannot be undone.')) return;
     try {
       await api.delete('/trades/drafts');
       load();
     } catch (ex) {
       setErr(ex.response?.data?.error || 'Failed to delete drafts');
+    }
+  };
+
+  const deleteAllTrades = async () => {
+    setDeleteOpen(false);
+    if (!window.confirm('Delete ALL trades? This cannot be undone.')) return;
+    try {
+      await api.delete('/trades/all');
+      load();
+    } catch (ex) {
+      setErr(ex.response?.data?.error || 'Failed to delete all trades');
     }
   };
 
@@ -66,7 +92,47 @@ export default function Journal() {
       <div className="page-hd">
         <h1>Trade Journal</h1>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-danger" onClick={deleteDrafts}>Delete Drafts</button>
+          {mode === 'practice' ? (
+            <div ref={deleteRef} style={{ position: 'relative' }}>
+              <button
+                className="btn btn-danger"
+                onClick={() => setDeleteOpen(o => !o)}
+              >
+                Delete ▾
+              </button>
+              {deleteOpen && (
+                <div style={{
+                  position: 'absolute', top: '110%', right: 0,
+                  background: 'var(--card)', border: '1px solid var(--border2)',
+                  borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+                  zIndex: 100, minWidth: 170, overflow: 'hidden'
+                }}>
+                  <button
+                    style={{ display:'block', width:'100%', padding:'10px 16px', textAlign:'left',
+                      background:'none', border:'none', cursor:'pointer', fontSize:14,
+                      color:'var(--danger)', fontWeight:600 }}
+                    onMouseOver={e => e.currentTarget.style.background='#FEE2E2'}
+                    onMouseOut={e => e.currentTarget.style.background='none'}
+                    onClick={deleteDrafts}
+                  >
+                    🗑 Delete Drafts
+                  </button>
+                  <button
+                    style={{ display:'block', width:'100%', padding:'10px 16px', textAlign:'left',
+                      background:'none', border:'none', cursor:'pointer', fontSize:14,
+                      color:'var(--danger)', fontWeight:600, borderTop:'1px solid var(--border)' }}
+                    onMouseOver={e => e.currentTarget.style.background='#FEE2E2'}
+                    onMouseOut={e => e.currentTarget.style.background='none'}
+                    onClick={deleteAllTrades}
+                  >
+                    🗑 Delete All Trades
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button className="btn btn-danger" onClick={deleteDrafts}>Delete Drafts</button>
+          )}
           <button className="btn btn-primary" onClick={() => nav('/new-trade')}>+ New Trade</button>
         </div>
       </div>
@@ -74,9 +140,14 @@ export default function Journal() {
       {/* Filters */}
       <div className="filter-bar">
         {[
-          { key: 'model',  opts: mode === 'practice' ? ['All', 'Practice Model'] : ['All', 'Model 1', 'Model 2'] },
-          { key: 'grade',  opts: ['All', 'A+', 'A', 'Draft'] },
-          { key: 'result', opts: ['All', 'Win', 'Loss', 'Breakeven'] },
+          { 
+            key: 'model',  
+            opts: mode === 'practice' 
+              ? [{ label: 'All', value: 'All' }, { label: 'Practice', value: 'Practice' }] 
+              : [{ label: 'All', value: 'All' }, { label: 'Model 1', value: 'Model 1' }, { label: 'Model 2', value: 'Model 2' }]
+          },
+          { key: 'grade',  opts: (mode === 'practice' ? ['All', 'Draft'] : ['All', 'A+', 'A', 'Draft']).map(o => ({ label: o, value: o })) },
+          { key: 'result', opts: ['All', 'Win', 'Loss', 'Breakeven'].map(o => ({ label: o, value: o })) },
         ].map(f => (
           <select
             key={f.key}
@@ -84,7 +155,7 @@ export default function Journal() {
             value={filter[f.key]}
             onChange={e => setFilter(p => ({ ...p, [f.key]: e.target.value }))}
           >
-            {f.opts.map(o => <option key={o}>{o}</option>)}
+            {f.opts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         ))}
       </div>
@@ -119,7 +190,33 @@ export default function Journal() {
                     <td>{formatDate(t.date)}</td>
                     <td><strong>{t.pair}</strong></td>
                     {mode === 'practice' && <td>{t.session || '—'}</td>}
-                    <td><span className={`pill ${t.model === 'Model 2' ? 'pM2' : t.model === 'Practice Model' ? 'pPM' : 'pM1'}`}>{t.model === 'Practice Model' ? 'Practice' : t.model}</span></td>
+                    <td>
+                      <span 
+                        className={`pill ${
+                          t.model === 'Practice' || t.model === 'Practice Model' ? 'pPM' :
+                          t.model === 'Model 2' ? 'pM2' :
+                          t.model?.toLowerCase() === 'model 3' ? 'pM3' : 'pM1'
+                        }`}
+                        style={
+                          t.model === 'Practice' || t.model === 'Practice Model' ? {} :
+                          t.model_color ? {
+                            backgroundColor: t.model_color.bg,
+                            color: t.model_color.text,
+                            borderColor: t.model_color.border,
+                            borderWidth: '1px',
+                            borderStyle: 'solid'
+                          } : (t.model?.toLowerCase() === 'model 3' ? {
+                            backgroundColor: '#FDF2F8',
+                            color: '#DB2777',
+                            borderColor: '#FCE7F3',
+                            borderWidth: '1px',
+                            borderStyle: 'solid'
+                          } : {})
+                        }
+                      >
+                        {t.model === 'Practice Model' ? 'Practice' : t.model}
+                      </span>
+                    </td>
                     {mode !== 'practice' && <td><span className={`pill ${t.grade === 'A+' ? 'pAp' : t.grade === 'A' ? 'pB' : 'pLow'}`}>{t.grade}</span></td>}
                     <td><span className={`pill ${t.status === 'final' ? 'pFin' : 'pDft'}`}>{t.status}</span></td>
                     <td className="mono">{t.r_multiple != null ? `${parseFloat(t.r_multiple).toFixed(2)}R` : '—'}</td>

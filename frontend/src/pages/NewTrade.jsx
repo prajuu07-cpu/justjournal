@@ -1,26 +1,26 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useMode } from '../context/ModeContext';
 
 const MODEL1_ITEMS = [
-  { key:'drawDailyTP',  label:'Draw Daily TP',                              weight:5,  optional:false },
-  { key:'trigger',      label:'Daily Trigger Candle',                       weight:5,  optional:false },
-  { key:'prevMS',       label:'Mark 4H or 2H Previous MS',                  weight:15, optional:false },
-  { key:'sync2H',       label:'2H Timeframe Synch',                         weight:25, optional:true },
-  { key:'priceReached', label:'Price Reached Previous MS',                  weight:20, optional:false },
-  { key:'engulfing',    label:'Engulfing at Previous MS',                   weight:25, optional:false },
-  { key:'minRR',        label:'Minimum RR ≥ 2.5',                           weight:5,  optional:false },
+  { key:'drawDailyTP',  label:'Draw Daily TP',                              weight:5,  required:true },
+  { key:'trigger',      label:'Daily Trigger Candle',                       weight:5,  required:true },
+  { key:'prevMS',       label:'Mark 4H or 2H Previous MS',                  weight:15, required:true },
+  { key:'sync2H',       label:'2H Timeframe Synch',                         weight:25, required:false },
+  { key:'priceReached', label:'Price Reached Previous MS',                  weight:20, required:true },
+  { key:'engulfing',    label:'Engulfing at Previous MS',                   weight:25, required:true },
+  { key:'minRR',        label:'Minimum RR ≥ 2.5',                           weight:5,  required:true },
 ];
 
 const MODEL2_ITEMS = [
-  { key:'drawDailyTP',  label:'Draw Daily TP',                              weight:5,  optional:false },
-  { key:'sos',          label:'Identify 4H SOS / 2H 2nd SOS',               weight:5,  optional:false },
-  { key:'prevMS',       label:'Mark 4H / 2H Previous MS',                   weight:15, optional:false },
-  { key:'sync2H',       label:'2H Timeframe Synch',                         weight:25, optional:true },
-  { key:'priceReached', label:'Price Reached PMS',                          weight:20, optional:false },
-  { key:'engulfing',    label:'Engulfing at PMS',                           weight:25, optional:false },
-  { key:'minRR',        label:'Min RR 2.5',                                 weight:5,  optional:false },
+  { key:'drawDailyTP',  label:'Draw Daily TP',                              weight:5,  required:true },
+  { key:'sos',          label:'Identify 4H SOS / 2H 2nd SOS',               weight:5,  required:true },
+  { key:'prevMS',       label:'Mark 4H / 2H Previous MS',                   weight:15, required:true },
+  { key:'sync2H',       label:'2H Timeframe Synch',                         weight:25, required:false },
+  { key:'priceReached', label:'Price Reached PMS',                          weight:20, required:true },
+  { key:'engulfing',    label:'Engulfing at PMS',                           weight:25, required:true },
+  { key:'minRR',        label:'Min RR 2.5',                                 weight:5,  required:true },
 ];
 
 const WEIGHT_COLORS = {
@@ -40,8 +40,14 @@ const MODEL_THEMES = {
 function calcScore(cl, items) { 
   return items.reduce((s,i) => s + (cl[i.key] ? (i.weight || 0) : 0), 0); 
 }
-function calcGrade(sc) { return sc >= 75 ? 'Valid' : 'Avoid'; }
-function getMissing(cl, items) { return items.filter(i=>!i.optional&&!cl[i.key]).map(i=>i.label); }
+function calcGrade(sc) { 
+  if (sc >= 90) return 'A+';
+  if (sc >= 75) return 'A';
+  return 'Avoid'; 
+}
+function getMissing(cl, items) { 
+  return items.filter(i => i.required && !cl[i.key]).map(i => i.label); 
+}
 
 function playWarning() {
   try {
@@ -60,7 +66,7 @@ function playWarning() {
 
 export default function NewTrade({ editTrade, onDone }) {
   const nav = useNavigate();
-  const { mode, practiceDefaults, updatePracticeDefaults, customModels, deleteModel, userSettings } = useMode();
+  const { mode, practiceDefaults, updatePracticeDefaults, customModels, deleteModel, restoreModel, updateSettings, userSettings } = useMode();
   const isEdit = !!editTrade?.id;
 
 
@@ -79,11 +85,26 @@ export default function NewTrade({ editTrade, onDone }) {
     return {};
   });
   const [result, setResult] = useState(editTrade?.result || '');
-  const [rMult,  setRMult]  = useState(editTrade?.r_multiple || '');
+  const [rMult,  setRMult]  = useState(() => editTrade?.r_multiple || (mode === 'practice' && !isEdit && practiceDefaults.rMult ? practiceDefaults.rMult : ''));
   const [notes,  setNotes]  = useState(editTrade?.notes  || '');
   const [err,    setErr]    = useState('');
   const [limitModal, setLimitModal] = useState('');
   const [busy,   setBusy]   = useState(false);
+
+  // Reset model if it's not valid for the current mode on mode switch
+  useEffect(() => {
+    if (isEdit) return; // Don't reset if we are editing an existing trade
+    if (mode === 'practice') {
+      setModel('Practice');
+    } else {
+      // For JustChill, default back to Model 1 if the current model is not found in JustChill list
+      const isCustomInMode = customModels.some(m => m.name === model && (m.mode || 'justchill') === 'justchill');
+      const isBuiltin = model === 'Model 1' || model === 'Model 2';
+      if (!isBuiltin && !isCustomInMode) {
+        setModel('Model 1');
+      }
+    }
+  }, [mode]);
 
 
 
@@ -100,7 +121,7 @@ export default function NewTrade({ editTrade, onDone }) {
             key: item.label,
             label: item.label,
             weight: item.weight || 0,
-            optional: false,
+            required: !!item.required,
             notes: item.notes || ''
           };
         }
@@ -109,7 +130,7 @@ export default function NewTrade({ editTrade, onDone }) {
           key: item,
           label: item,
           weight: 100 / custom.checklist.length,
-          optional: false
+          required: false
         };
       });
     }
@@ -135,9 +156,11 @@ export default function NewTrade({ editTrade, onDone }) {
     const isPractice = mode === 'practice';
 
     if (asFinal && !isPractice) {
-      if (missing.length) { setErr('Check all required items before saving as Final'); return; }
-      if (score < 75)     { setErr('Score must be ≥75 to save as Final'); return; }
-      if (grade === 'Draft' && !window.confirm('Grade is Draft — save anyway?')) return;
+      if (missing.length) { setErr('You must complete all required checklist items before finalizing the trade.'); return; }
+      if (score < 75) { 
+        setErr('Minimum Score Required. You must reach at least 75 points to finalize the trade.'); 
+        return; 
+      }
     }
 
     let rm=null, res_=result||null;
@@ -165,7 +188,7 @@ export default function NewTrade({ editTrade, onDone }) {
       else        await api.post('/trades', payload);
 
       if (isPractice) {
-        updatePracticeDefaults({ pair: pair.toUpperCase(), risk: risk, date: date });
+        updatePracticeDefaults({ pair: pair.toUpperCase(), risk: risk, date: date, rMult: rMult });
       }
 
       if (onDone) onDone(); else nav('/journal');
@@ -178,11 +201,42 @@ export default function NewTrade({ editTrade, onDone }) {
 
   const barColor = score>=90?'#7c3aed':score>=75?'#0284c7':score>=40?'#d97706':'#e11d48';
 
-  const handleDeleteModel = async (m) => {
-    if (window.confirm(`Are you sure you want to delete model "${m.name}"?`)) {
-      const ok = await deleteModel(m._id || m.id);
-      if (ok && model === m.name) {
-        setModel(mode === 'practice' ? 'Practice' : 'Model 1');
+  const handleDeleteModel = async (modelName) => {
+    if (!modelName) return;
+    if (window.confirm(`Delete model "${modelName}"? This will move it to the Bin.`)) {
+      setBusy(true);
+      try {
+        if (modelName === 'Model 1' || modelName === 'Model 2') {
+          // Robustly merge hidden and binned arrays
+          const hidden = Array.from(new Set([...(userSettings.hidden_models || []), modelName]));
+          const binned = Array.from(new Set([...(userSettings.binned_models || []), modelName]));
+          
+          const ok = await updateSettings({ 
+            ...userSettings, 
+            hidden_models: hidden, 
+            binned_models: binned 
+          });
+          
+          if (ok) {
+            const nextModel = mode === 'practice' ? 'Practice' : (modelName === 'Model 1' ? 'Model 2' : 'Model 1');
+            setModel(nextModel);
+          }
+        } else {
+          const custom = customModels.find(m => m.name === modelName);
+          if (!custom) {
+            alert("Model not found in custom list.");
+            return;
+          }
+          const ok = await deleteModel(custom._id || custom.id);
+          if (ok) {
+            setModel(mode === 'practice' ? 'Practice' : 'Model 1');
+          }
+        }
+      } catch (err) {
+        console.error("Deletion failed", err);
+        alert("Deletion failed. Please try again.");
+      } finally {
+        setBusy(false);
       }
     }
   };
@@ -201,8 +255,22 @@ export default function NewTrade({ editTrade, onDone }) {
     if (model && !list.find(m => m.name === model)) {
       list.push({ name: model, isHistorical: true });
     }
-    return list;
-  }, [mode, customModels, model]);
+    // Filter out hidden models
+    const hidden = userSettings.hidden_models || [];
+    const filtered = list.filter(m => !hidden.includes(m.name));
+
+    // Deduplicate by name (case-insensitive)
+    const unique = [];
+    const seen = new Set();
+    filtered.forEach(m => {
+      const lowerName = m.name.toLowerCase();
+      if (!seen.has(lowerName)) {
+        unique.push(m);
+        seen.add(lowerName);
+      }
+    });
+    return unique;
+  }, [mode, customModels, model, userSettings.hidden_models]);
 
   return (
     <div className="page">
@@ -230,9 +298,6 @@ export default function NewTrade({ editTrade, onDone }) {
       <div className="page-hd">
         <h1>{isEdit ? 'Edit Trade' : 'New Trade'}</h1>
         <div className="hd-actions">
-          {!isEdit && (
-            <button className="btn btn-ghost btn-sm" onClick={() => setLimitModal('weekly')}>Check Limits</button>
-          )}
           <button className="btn btn-ghost" onClick={() => onDone ? onDone() : nav('/journal')}>Cancel</button>
           <button className="btn btn-ghost" onClick={() => save(false)} disabled={busy}>Save Draft</button>
           <button className="btn btn-ok" onClick={() => save(true)} disabled={busy}>Save Final</button>
@@ -251,12 +316,42 @@ export default function NewTrade({ editTrade, onDone }) {
         <div className="form-sec">Model</div>
         <div className="field" style={{marginBottom: '0.5rem'}}>
           <div style={{display:'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
-            <div className="model-sel" style={{padding:0, gap: '4px', background: 'transparent', border:'none'}}>
+            <div className="model-sel" style={{padding:0, margin: 0, gap: '4px', background: 'transparent', border:'none'}}>
               {modelBadges.map(m => (
-                <div key={m.name} style={{display:'flex', alignItems:'center', position:'relative'}}>
+                <div key={m.name} style={{display:'flex', alignItems:'center', position:'relative', height: '34px'}}>
                   <button 
-                    className={`mbtn ${model === m.name ? (m.name === 'Model 1' ? 'sel-m1' : 'sel-m2') : ''}`}
-                    style={{padding: '6px 12px', fontSize: '0.85rem'}}
+                    className={`mbtn ${model === m.name ? (m.name === 'Model 1' ? 'sel-m1' : (m.name === 'Model 2' ? 'sel-m2' : '')) : ''}`}
+                    style={{
+                      height: '34px',
+                      padding: '0 12px', 
+                      fontSize: '0.85rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      ...(m.name === 'Practice' && model === m.name ? {
+                        backgroundColor: '#F1F5F9',
+                        color: '#64748B',
+                        borderColor: '#64748B',
+                        borderWidth: '1px',
+                        boxShadow: `0 4px 10px #CBD5E1`
+                      } : m.name === 'Practice' ? {
+                        backgroundColor: '#F1F5F9',
+                        color: '#64748B',
+                        borderColor: '#CBD5E1',
+                        borderWidth: '1px',
+                      } : m.name.toLowerCase() === 'model 3' && model === m.name ? {
+                        backgroundColor: '#FDF2F8',
+                        color: '#DB2777',
+                        borderColor: '#DB2777',
+                        borderWidth: '1px',
+                        boxShadow: `0 4px 10px #FCE7F3`
+                      } : (m.color && model === m.name ? {
+                        backgroundColor: m.color.bg,
+                        color: m.color.text,
+                        borderColor: m.color.text,
+                        borderWidth: '1px',
+                        boxShadow: `0 4px 10px ${m.color.border}`
+                      } : {}))
+                    }}
                     onClick={() => {
                       setModel(m.name);
                       if (m.notes && !notes) setNotes(m.notes);
@@ -270,7 +365,17 @@ export default function NewTrade({ editTrade, onDone }) {
             {mode === 'practice' && (
               <button 
                 className="btn btn-ghost" 
-                style={{padding: '4px 10px', fontSize: '0.8rem', border: '1px dashed #ccc'}}
+                style={{
+                  padding: '6px 12px', 
+                  fontSize: '0.85rem', 
+                  borderRadius: '12px',
+                  border: '1px dashed var(--border2)',
+                  backgroundColor: 'transparent',
+                  color: 'var(--sub)',
+                  height: '34px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
                 onClick={() => nav('/model-builder')}
               >
                 + Add Model
@@ -314,27 +419,57 @@ export default function NewTrade({ editTrade, onDone }) {
                    style={{'--ici': col.color, '--ibg': col.bg, '--irgb': col.rgb, display:'flex', flexDirection:'column', alignItems:'flex-start', padding:'12px'}}>
                 <div style={{display:'flex', alignItems:'center', width:'100%', gap:10}}>
                   <div className="ci-box">{cl[item.key]&&<svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4.5l3.5 3.5L11 1" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div>
-                  <span className="ci-lbl">{item.label}{(item.optional && item.key !== 'sync2H') && <span className="ci-opt"> (optional)</span>}</span>
+                  <span className="ci-lbl">{item.label}</span>
                   <span className="ci-pts">{Math.round(item.weight)}pts</span>
                 </div>
               </div>
             );
           })}
-          {missing.length>0&&(
+          
+
+
+          {missing.length > 0 && (
             <div className="mand-warn" style={{ '--w-bg': theme.wBg, '--w-border': theme.wBorder, '--w-text': theme.wText, '--w-ul': theme.wUl }}>
               <div><strong>Required before Final:</strong><ul>{missing.map(l=><li key={l}>{l}</li>)}</ul></div>
             </div>
           )}
-          <div className="sc-blk">
-            <div className="sc-label">{model} · Setup Score</div>
-            <div className="sc-n" style={{color:barColor}}>{score}</div>
-            <div className="sc-bg"><div className="sc-fill" style={{width:`${score}%`,background:`linear-gradient(90deg,${barColor}88,${barColor})`}}/></div>
-            <div className="q-tag" style={{
-              background: score >= 75 ? '#DCFCE7' : '#FEE2E2', 
-              color: score >= 75 ? '#166534' : '#991B1B',
-              border: `1px solid ${score >= 75 ? '#BBF7D0' : '#FECACA'}`
-            }}>
-              {grade}
+
+          <div className="sc-blk" style={{padding: '20px', borderRadius: '16px'}}>
+            <div className="sc-label" style={{marginBottom: '12px', fontSize: '0.9rem', letterSpacing: '0.05em'}}>{model} · MODEL SCORE</div>
+            
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom: '16px'}}>
+              <div>
+                <div style={{fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4}}>Total Points</div>
+                <div className="sc-n" style={{color:barColor, fontSize: '2.5rem', textAlign: 'left', lineHeight: 1, fontWeight: 900}}>{score}</div>
+              </div>
+              
+              {score >= 75 && (
+                <div style={{textAlign: 'right'}}>
+                  <div style={{fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4}}>Grade</div>
+                  <div style={{
+                    background: barColor + '15', 
+                    color: barColor,
+                    border: `1.5px solid ${barColor}44`,
+                    padding: '6px 20px', 
+                    borderRadius: '12px',
+                    fontSize: '1.5rem',
+                    fontWeight: 900,
+                    boxShadow: `0 4px 12px ${barColor}15`
+                  }}>
+                    {grade}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="sc-bg" style={{height: '10px', borderRadius: '5px', background: '#f1f5f9', overflow:'hidden'}}>
+              <div className="sc-fill" style={{
+                width:`${Math.min(score, 100)}%`,
+                height: '100%',
+                background:`linear-gradient(90deg, ${barColor}ee, ${barColor})`,
+                boxShadow: `0 0 10px ${barColor}44`,
+                transition: 'width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
+              }}/>
             </div>
           </div>
         </div>
@@ -359,11 +494,11 @@ export default function NewTrade({ editTrade, onDone }) {
         <div className="field"><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3} placeholder="Optional notes…" style={{resize:'vertical'}}/></div>
       </div>
 
-      {modelBadges.find(m => m.name === model && m._id && !m.isHistorical) && (
+      {model && model !== 'Practice' && !modelBadges.find(m => m.name === model)?.isHistorical && (
         <div style={{marginTop: '32px', textAlign: 'center', paddingBottom: '20px'}}>
           <button 
             className="del-model-btn" 
-            onClick={() => handleDeleteModel(modelBadges.find(m => m.name === model))}
+            onClick={() => handleDeleteModel(model)}
             style={{
               color: '#e11d48', fontSize: '0.85rem', fontWeight: 600, 
               background: 'none', border: 'none', padding: 12, cursor: 'pointer',

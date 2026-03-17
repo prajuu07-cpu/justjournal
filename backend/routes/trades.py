@@ -74,6 +74,18 @@ def _calc_score(model: str, cl: dict, uid: Optional[ObjectId] = None) -> int:
             
     return 0
 
+def _get_model_color(model: str, uid: ObjectId) -> Optional[dict]:
+    if model in ("Model 1", "Practice"):
+        return { "bg": "#F3E8FF", "text": "#7E22CE", "border": "#E9D5FF" } # pM1 style
+    if model == "Model 2":
+        return { "bg": "#E0E7FF", "text": "#4F46E5", "border": "#C7D2FE" } # pM2 style
+    
+    db = get_db()
+    custom = db.custom_models.find_one({"user_id": uid, "name": model})
+    if custom and "color" in custom:
+        return custom["color"]
+    return None
+
 def _calc_grade(score: int) -> str:
     return "A+" if score >= 90 else "A" if score >= 75 else "Draft"
 
@@ -250,6 +262,7 @@ def create_trade():
         "date":           trade_date,
         "pair":           pair,
         "model":          model,
+        "model_color":    _get_model_color(model, uid),
         "direction":      direction,
         "risk_percent":   risk,
         "checklist":      checklist,
@@ -374,6 +387,7 @@ def update_trade(trade_id):
         "date":           trade_date,
         "session":        session if get_mode() == "practice" else None,
         "model":          model,
+        "model_color":    _get_model_color(model, uid),
         "direction":      direction,
         "risk_percent":   risk,
         "checklist":      checklist,
@@ -520,6 +534,24 @@ def delete_drafts():
         rebuild_reports(str(uid))
         
     return jsonify(message=f"Deleted {res.deleted_count} draft trades ({mode}).")
+
+
+# ── DELETE /api/trades/all ────────────────────────────────────────────────────
+@trades_bp.delete("/all")
+@jwt_required()
+def delete_all_trades():
+    uid  = ObjectId(get_jwt_identity())
+    db   = get_db()
+    mode = get_mode()
+    
+    del_filt = {"user_id": uid, "mode": mode}
+
+    res = db.trades.delete_many(del_filt)
+    
+    if res.deleted_count > 0:
+        rebuild_reports(str(uid))
+        
+    return jsonify(message=f"Deleted {res.deleted_count} trades ({mode}).")
 
 
 # ── GET /api/trades/month/<year>/<month> ──────────────────────────────────────

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tjp-cache-v5';
+const CACHE_NAME = 'tjp-cache-v6';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

@@ -67,7 +67,6 @@ _GRID_PNL_STYLES: dict = {}
 def _gpnl(color_val, style_id):
     key = f"{style_id}_{color_val.hexval()}"
     if key not in _GRID_PNL_STYLES:
-        # Significantly increased font size to 15 for maximum visibility
         _GRID_PNL_STYLES[key] = ParagraphStyle(
             f"ep_gpnl_{key}", fontName="Helvetica-Bold",
             fontSize=15, textColor=color_val, leading=18, alignment=TA_CENTER,
@@ -218,13 +217,16 @@ def _build_monthly_grid(monthly_breakdown: list, width: float) -> Table:
     for i in range(0, 12, 4):
         row = []
         for j in range(4):
-            m     = monthly_breakdown[i + j]
-            pnl   = float(m.get("pnl", 0))
-            pnl_c = C_WIN if pnl > 0 else (C_LOSS if pnl < 0 else C_DARK)
-            bg    = C_POS_BG if pnl > 0 else (C_NEG_BG if pnl < 0 else C_NEU_BG)
-            row.append([_p(MONTHS[m["month"] - 1], S_MB_MON),
-                        _p(("+" if pnl > 0 else "") + f"{pnl:.2f}%", _gpnl(pnl_c, f"mb_{i+j}"))])
-            ts.append(("BACKGROUND", (j, i // 4), (j, i // 4), bg))
+            if i + j < len(monthly_breakdown):
+                m     = monthly_breakdown[i + j]
+                pnl   = float(m.get("pnl", 0))
+                pnl_c = C_WIN if pnl > 0 else (C_LOSS if pnl < 0 else C_DARK)
+                bg    = C_POS_BG if pnl > 0 else (C_NEG_BG if pnl < 0 else C_NEU_BG)
+                row.append([_p(MONTHS[m["month"] - 1], S_MB_MON),
+                            _p(("+" if pnl > 0 else "") + f"{pnl:.2f}%", _gpnl(pnl_c, f"mb_{i+j}"))])
+                ts.append(("BACKGROUND", (j, i // 4), (j, i // 4), bg))
+            else:
+                row.append("")
         data.append(row)
 
     return Table(data, colWidths=[col_w] * 4, rowHeights=[cell_h] * 3, style=TableStyle(ts))
@@ -232,7 +234,7 @@ def _build_monthly_grid(monthly_breakdown: list, width: float) -> Table:
 
 # ── Monthly PDF builder ───────────────────────────────────────────────────────
 def _build_month_pdf(username: str, year: int, month: int,
-                     stats: dict, trades: list) -> bytes:
+                     stats: dict, trades: list, mode: str = 'justchill') -> bytes:
     刻 = io.BytesIO()
     W   = A4[0] - 32 * mm
     month_name = MONTHS[month - 1]
@@ -297,29 +299,42 @@ def _build_month_pdf(username: str, year: int, month: int,
     story.append(Spacer(1, 5 * mm))
 
     # Daily PnL Calendar
-    story.append(_p(f"Daily PnL Breakdown \u2013 {month_name} {year}", S_SEC))
+    story.append(_p(f"Daily PnL Breakdown – {month_name} {year}", S_SEC))
     story.append(_build_daily_calendar(year, month, s.get("dailyBreakdown", {}), W))
     story.append(Spacer(1, 6 * mm))
 
     if trades:
         story.append(_p(f"Trades \u2013 {month_name} {year}", S_SEC))
-        t_headers = ["Date", "Pair", "Model", "Dir", "Risk%", "Grade", "Result", "R:R", "PNL%"]
-        t_col_ws  = [22*mm, 20*mm, 18*mm, 12*mm, 14*mm, 14*mm, 16*mm, 14*mm, 20*mm]
+        is_prac = mode == 'practice'
+        
+        if is_prac:
+            t_headers = ["Date", "Pair", "Model", "Dir", "Risk%", "Result", "R:R", "PNL%"]
+            t_col_ws  = [22*mm, 27*mm, 25*mm, 12*mm, 14*mm, 16*mm, 14*mm, 20*mm]
+        else:
+            t_headers = ["Date", "Pair", "Model", "Dir", "Risk%", "Grade", "Result", "R:R", "PNL%"]
+            t_col_ws  = [22*mm, 20*mm, 18*mm, 12*mm, 14*mm, 14*mm, 16*mm, 14*mm, 20*mm]
+            
         t_rows    = [[_p(h, S_HDR) for h in t_headers]]
         for t in trades:
             rr  = t.get("r_multiple")
             pnl = t.get("pnl_percentage")
-            t_rows.append([
+            row = [
                 _p(_fd(t.get("date"))),
                 _p(t.get("pair", "-"), S_CELL_B),
                 _p(t.get("model", "-")),
                 _p(t.get("direction", "-")),
                 _p(f'{t.get("risk_percent", 0)}%'),
-                _p(t.get("grade", "-")),
+            ]
+            if not is_prac:
+                row.append(_p(t.get("grade", "-")))
+            
+            row.extend([
                 _p(t.get("result") or "-"),
                 _p(f"{rr:.2f}R" if rr is not None else "-", S_MONO),
                 _p(_fmt_pnl(pnl), S_MONO),
             ])
+            t_rows.append(row)
+            
         ts = TableStyle([
             ("BACKGROUND",    (0, 0),  (-1, 0),  C_DARK),
             ("ROWBACKGROUNDS",(0, 1),  (-1, -1), [colors.white, C_CARD]),
@@ -330,20 +345,25 @@ def _build_month_pdf(username: str, year: int, month: int,
             ("LEFTPADDING",   (0, 0),  (-1, -1), 3),
             ("RIGHTPADDING",  (0, 0),  (-1, -1), 3),
         ])
+        
+        res_idx = 5 if is_prac else 6
+        pnl_idx = 7 if is_prac else 8
+        grd_idx = None if is_prac else 5
+        
         for i, t in enumerate(trades, 1):
             result = t.get("result")
             pnl    = t.get("pnl_percentage")
             grade  = t.get("grade")
             if result == "Win":
-                ts.add("TEXTCOLOR", (6, i), (6, i), C_WIN)
+                ts.add("TEXTCOLOR", (res_idx, i), (res_idx, i), C_WIN)
             elif result == "Loss":
-                ts.add("TEXTCOLOR", (6, i), (6, i), C_LOSS)
+                ts.add("TEXTCOLOR", (res_idx, i), (res_idx, i), C_LOSS)
             elif result == "Breakeven":
-                ts.add("TEXTCOLOR", (6, i), (6, i), C_BE)
+                ts.add("TEXTCOLOR", (res_idx, i), (res_idx, i), C_BE)
             if pnl is not None:
-                ts.add("TEXTCOLOR", (8, i), (8, i), C_WIN if _sf(pnl) >= 0 else C_LOSS)
-            if grade == "A+":
-                ts.add("TEXTCOLOR", (5, i), (5, i), C_PURPLE)
+                ts.add("TEXTCOLOR", (pnl_idx, i), (pnl_idx, i), C_WIN if _sf(pnl) >= 0 else C_LOSS)
+            if grd_idx is not None and grade == "A+":
+                ts.add("TEXTCOLOR", (grd_idx, i), (grd_idx, i), C_PURPLE)
         story.append(Table(t_rows, colWidths=t_col_ws, repeatRows=1, style=ts))
         story.append(Spacer(1, 5 * mm))
     else:
@@ -357,7 +377,7 @@ def _build_month_pdf(username: str, year: int, month: int,
 
 # ── Yearly PDF builder ────────────────────────────────────────────────────────
 def _build_year_pdf(username: str, year: int,
-                    stats: dict, trades: list, monthly_breakdown: list) -> bytes:
+                    stats: dict, trades: list, monthly_breakdown: list, mode: str = 'justchill') -> bytes:
     刻 = io.BytesIO()
     W   = A4[0] - 32 * mm
 
@@ -434,23 +454,36 @@ def _build_year_pdf(username: str, year: int,
     # Trade log
     if trades:
         story.append(_p(f"Trades \u2013 {year}", S_SEC))
-        t_headers = ["Date", "Pair", "Model", "Dir", "Risk%", "Grade", "Result", "R:R", "PNL%"]
-        t_col_ws  = [22*mm, 20*mm, 18*mm, 12*mm, 14*mm, 14*mm, 16*mm, 14*mm, 20*mm]
+        is_prac = mode == 'practice'
+        
+        if is_prac:
+            t_headers = ["Date", "Pair", "Model", "Dir", "Risk%", "Result", "R:R", "PNL%"]
+            t_col_ws  = [22*mm, 27*mm, 25*mm, 12*mm, 14*mm, 16*mm, 14*mm, 20*mm]
+        else:
+            t_headers = ["Date", "Pair", "Model", "Dir", "Risk%", "Grade", "Result", "R:R", "PNL%"]
+            t_col_ws  = [22*mm, 20*mm, 18*mm, 12*mm, 14*mm, 14*mm, 16*mm, 14*mm, 20*mm]
+            
         t_rows    = [[_p(h, S_HDR) for h in t_headers]]
         for t in trades:
             rr  = t.get("r_multiple")
             pnl = t.get("pnl_percentage")
-            t_rows.append([
+            row = [
                 _p(_fd(t.get("date"))),
                 _p(t.get("pair", "-"), S_CELL_B),
                 _p(t.get("model", "-")),
                 _p(t.get("direction", "-")),
                 _p(f'{t.get("risk_percent", 0)}%'),
-                _p(t.get("grade", "-")),
+            ]
+            if not is_prac:
+                row.append(_p(t.get("grade", "-")))
+                
+            row.extend([
                 _p(t.get("result") or "-"),
                 _p(f"{rr:.2f}R" if rr is not None else "-", S_MONO),
                 _p(_fmt_pnl(pnl), S_MONO),
             ])
+            t_rows.append(row)
+            
         ts = TableStyle([
             ("BACKGROUND",    (0, 0),  (-1, 0),  C_DARK),
             ("ROWBACKGROUNDS",(0, 1),  (-1, -1), [colors.white, C_CARD]),
@@ -461,20 +494,25 @@ def _build_year_pdf(username: str, year: int,
             ("LEFTPADDING",   (0, 0),  (-1, -1), 3),
             ("RIGHTPADDING",  (0, 0),  (-1, -1), 3),
         ])
+        
+        res_idx = 5 if is_prac else 6
+        pnl_idx = 7 if is_prac else 8
+        grd_idx = None if is_prac else 5
+        
         for i, t in enumerate(trades, 1):
             result = t.get("result")
             pnl    = t.get("pnl_percentage")
             grade  = t.get("grade")
             if result == "Win":
-                ts.add("TEXTCOLOR", (6, i), (6, i), C_WIN)
+                ts.add("TEXTCOLOR", (res_idx, i), (res_idx, i), C_WIN)
             elif result == "Loss":
-                ts.add("TEXTCOLOR", (6, i), (6, i), C_LOSS)
+                ts.add("TEXTCOLOR", (res_idx, i), (res_idx, i), C_LOSS)
             elif result == "Breakeven":
-                ts.add("TEXTCOLOR", (6, i), (6, i), C_BE)
+                ts.add("TEXTCOLOR", (res_idx, i), (res_idx, i), C_BE)
             if pnl is not None:
-                ts.add("TEXTCOLOR", (8, i), (8, i), C_WIN if _sf(pnl) >= 0 else C_LOSS)
-            if grade == "A+":
-                ts.add("TEXTCOLOR", (5, i), (5, i), C_PURPLE)
+                ts.add("TEXTCOLOR", (pnl_idx, i), (pnl_idx, i), C_WIN if _sf(pnl) >= 0 else C_LOSS)
+            if grd_idx is not None and grade == "A+":
+                ts.add("TEXTCOLOR", (grd_idx, i), (grd_idx, i), C_PURPLE)
         story.append(Table(t_rows, colWidths=t_col_ws, repeatRows=1, style=ts))
         story.append(Spacer(1, 5 * mm))
     else:
@@ -551,7 +589,7 @@ def export_month_pdf(year, month):
         dailyBreakdown=daily_breakdown
     )
 
-    pdf_bytes = _build_month_pdf(username, year, month, stats, trades)
+    pdf_bytes = _build_month_pdf(username, year, month, stats, trades, mode)
     filename  = f"trading-journal-{username}-{year}-{month:02d}.pdf"
     return send_file(
         io.BytesIO(pdf_bytes),
@@ -630,7 +668,7 @@ def export_year_pdf(year):
         avgRR=avg_rr
     )
 
-    pdf_bytes = _build_year_pdf(username, year, stats, trades, mb_arr)
+    pdf_bytes = _build_year_pdf(username, year, stats, trades, mb_arr, mode)
     filename  = f"trading-journal-{username}-{year}.pdf"
     return send_file(
         io.BytesIO(pdf_bytes),

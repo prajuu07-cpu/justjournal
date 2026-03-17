@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useMode } from '../context/ModeContext';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 export default function Bin() {
   const { restoreModel, emptyBin, userSettings, mode } = useMode();
+  const nav = useNavigate();
   const [binnedCustom, setBinnedCustom] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,6 +49,7 @@ export default function Bin() {
         <div className="card">
           <h2>Bin Not Available</h2>
           <p style={{ color: '#64748b' }}>The model bin is only available in JustChill mode.</p>
+          <button className="btn btn-ghost" onClick={() => nav('/')} style={{ marginTop: 20 }}>Back to Dashboard</button>
         </div>
       </div>
     );

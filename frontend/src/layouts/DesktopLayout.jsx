@@ -16,8 +16,10 @@ export default function DesktopLayout() {
   const { user, logout } = useAuth();
   const { mode } = useMode();
   const nav = useNavigate();
+  const location = useLocation();
 
   const doLogout = () => { logout(); nav('/login'); };
+  const hideSwitch = location.pathname === '/model-builder';
 
   return (
     <div className="layout">

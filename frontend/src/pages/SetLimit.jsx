@@ -100,19 +100,6 @@ export default function SetLimit() {
         </div>
       </div>
 
-      <div className="card" style={{background: '#f8fafc', border: '1px dashed #cbd5e1'}}>
-        <div style={{display:'flex', gap: 12, alignItems:'flex-start'}}>
-          <div style={{fontSize: '1.2rem'}}>💡</div>
-          <div>
-            <div style={{fontWeight: 700, fontSize: '0.9rem', color: '#334155'}}>How this works</div>
-            <div style={{fontSize: '0.85rem', color: '#64748b', lineHeight: 1.5}}>
-              When you reach your weekly limit, you won't be able to save new trades as "Final" until the next week starts. 
-              Similarly, hitting your monthly loss limit will lock trading until the new month. 
-              <strong>Practice mode is never affected by these limits.</strong>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

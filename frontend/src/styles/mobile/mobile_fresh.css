@@ -210,8 +210,26 @@
 }
 
 .m-content .tbl {
-  font-size: 13px;
-  min-width: 600px; /* Force horizontal scroll */
+  font-size: 11px !important;
+  min-width: 100%; /* Respect container width */
+  border-collapse: collapse;
+}
+
+.m-content .tbl th,
+.m-content .tbl td {
+  padding: 8px 4px !important;
+  text-wrap: nowrap !important;
+}
+
+/* Specific column control */
+.m-content .tbl th:nth-child(1),
+.m-content .tbl td:nth-child(1) {
+  min-width: 80px !important; /* Date doesn't wrap */
+}
+
+.m-content .tbl th:nth-child(2),
+.m-content .tbl td:nth-child(2) {
+  min-width: 60px !important; /* Pair doesn't wrap */
 }
 
 /* Compact Checklist for Mobile */

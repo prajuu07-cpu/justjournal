@@ -272,6 +272,20 @@ export default function NewTrade({ editTrade, onDone }) {
     return unique;
   }, [mode, customModels, model, userSettings.hidden_models]);
 
+  // Dynamic color for "Required before Final" box
+  const dynamicTheme = useMemo(() => {
+    const badge = modelBadges.find(m => m.name === model);
+    if (badge?.color) {
+      return {
+        wBg: badge.color.bg,
+        wBorder: badge.color.border || badge.color.text,
+        wText: badge.color.text,
+        wUl: badge.color.text
+      };
+    }
+    return MODEL_THEMES[model] || MODEL_THEMES['Model 1'];
+  }, [model, modelBadges]);
+
   return (
     <div className="page">
       {limitModal && (
@@ -428,7 +442,7 @@ export default function NewTrade({ editTrade, onDone }) {
 
 
           {missing.length > 0 && (
-            <div className="mand-warn" style={{ '--w-bg': theme.wBg, '--w-border': theme.wBorder, '--w-text': theme.wText, '--w-ul': theme.wUl }}>
+            <div className="mand-warn" style={{ '--w-bg': dynamicTheme.wBg, '--w-border': dynamicTheme.wBorder, '--w-text': dynamicTheme.wText, '--w-ul': dynamicTheme.wUl }}>
               <div><strong>Required before Final:</strong><ul>{missing.map(l=><li key={l}>{l}</li>)}</ul></div>
             </div>
           )}

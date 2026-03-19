@@ -151,7 +151,7 @@ export default function Journal() {
           },
           { key: 'grade',  opts: (mode === 'practice' ? ['All Grades', 'Draft'] : ['All Grades', 'A+', 'A', 'Draft']).map(o => ({ label: o, value: o })) },
           { key: 'result', opts: ['All Results', 'Win', 'Loss', 'Breakeven'].map(o => ({ label: o, value: o })) },
-        ].map(f => (
+        ].filter(f => mode !== 'practice' || f.key !== 'grade').map(f => (
           <select
             key={f.key}
             className="fsel"

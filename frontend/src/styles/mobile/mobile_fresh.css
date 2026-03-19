@@ -243,3 +243,19 @@
   border-left: none;
   border-right: none;
 }
+
+/* ── PREVENT AUTO-ZOOM ── */
+/* Browsers (Safari) zoom on focus if font-size < 16px */
+.m-content input, 
+.m-content textarea, 
+.m-content select {
+  font-size: 16px !important;
+  line-height: normal;
+  vertical-align: middle;
+}
+
+/* Ensure checklists and small elements don't shift */
+.m-content .field input,
+.m-content .field select {
+  height: 44px; /* Minimum touch target */
+}

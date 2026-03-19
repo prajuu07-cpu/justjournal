@@ -16,15 +16,16 @@
   font-family: 'Inter', sans-serif;
 }
 
-/* Fixed Header */
+/* Fixed Header with Safe Area support */
 .m-header {
-  height: 64px;
+  height: auto;
+  min-height: 64px;
   background: var(--m-card);
   border-bottom: 1px solid var(--m-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: env(safe-area-inset-top, 0px) 16px 0 16px;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -37,8 +38,11 @@
   color: var(--m-text);
   padding: 8px;
   cursor: pointer;
-  width: 48px;
-  text-align: left;
+  min-width: 48px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .m-logo {

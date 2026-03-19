@@ -102,7 +102,7 @@ export function MonthlyReports() {
           <div className="card" style={{padding:0,overflow:'hidden'}}>
             <div className="tbl-wrap">
               <table className="tbl">
-                <thead><tr><th>Date</th><th>Pair</th>{mode === 'practice' && <th>Session</th>}<th>Model</th><th>Grade</th><th>Dir</th><th>Risk</th><th>Result</th><th>R:R</th><th>PNL</th></tr></thead>
+                <thead><tr><th>Date</th><th>Pair</th>{mode === 'practice' && <th>Session</th>}<th>Model</th>{mode !== 'practice' && <th>Grade</th>}<th>Dir</th><th>Risk</th><th>Result</th><th>R:R</th><th>PNL</th></tr></thead>
                 <tbody>
                   {data.trades.map(t=>(
                     <tr key={t.id} className={t.status === 'final' ? 'tr-final' : ''}>
@@ -240,7 +240,7 @@ export function YearlyReports() {
           <div className="card" style={{padding:0,overflow:'hidden'}}>
             <div className="tbl-wrap">
               <table className="tbl">
-                <thead><tr><th>Date</th><th>Pair</th>{mode === 'practice' && <th>Session</th>}<th>Model</th><th>Grade</th><th>Dir</th><th>Risk</th><th>Result</th><th>R:R</th><th>PNL</th></tr></thead>
+                <thead><tr><th>Date</th><th>Pair</th>{mode === 'practice' && <th>Session</th>}<th>Model</th>{mode !== 'practice' && <th>Grade</th>}<th>Dir</th><th>Risk</th><th>Result</th><th>R:R</th><th>PNL</th></tr></thead>
                 <tbody>
                   {data.trades.map(t=>(
                     <tr key={t.id} className={t.status === 'final' ? 'tr-final' : ''}>

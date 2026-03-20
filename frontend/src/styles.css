@@ -39,7 +39,7 @@ a{text-decoration:none;color:inherit}
 
 /* ── TABLE ───────────────────────────────────────────────────── */
 .tbl-wrap{overflow-x:auto; width:100%;}
-.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl{width:100%;border-collapse:collapse;font-size:14px;white-space:nowrap}
 .tbl th{text-align:left;padding:12px 16px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;background:var(--card2);border-bottom:1px solid var(--border)}
 .tbl td{padding:14px 16px;border-bottom:1px solid var(--border)}
 .tbl tr:last-child td{border-bottom:none}

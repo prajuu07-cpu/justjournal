@@ -8,6 +8,7 @@ import ModelBuilder from '../pages/ModelBuilder';
 import { MonthlyReports, YearlyReports } from '../pages/Reports';
 import SetLimit from '../pages/SetLimit';
 import Bin from '../pages/Bin';
+import TradeBin from '../pages/TradeBin';
 import '../styles/mobile/mobile_fresh.css';
 
 import ModeSwitch from '../components/ModeSwitch';
@@ -50,11 +51,9 @@ export default function MobileLayout() {
           <NavLink to="/monthly" className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Monthly</NavLink>
           <NavLink to="/yearly" className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Yearly</NavLink>
           {mode === 'justchill' && (
-            <>
-              <NavLink to="/settings" className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Set Limit</NavLink>
-              <NavLink to="/bin" className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Bin</NavLink>
-            </>
+            <NavLink to="/settings" className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Set Limit</NavLink>
           )}
+          <NavLink to={mode === 'practice' ? '/trade-bin' : '/bin'} className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Bin</NavLink>
         </nav>
 
         <div className="m-sidebar-foot">
@@ -73,6 +72,7 @@ export default function MobileLayout() {
           <Route path="/model-builder" element={<ModelBuilder/>}/>
           <Route path="/settings"  element={<SetLimit/>}/>
           <Route path="/bin"       element={<Bin/>}/>
+          <Route path="/trade-bin" element={<TradeBin/>}/>
           <Route path="*"          element={<Navigate to="/" replace/>}/>
         </Routes>
       </main>

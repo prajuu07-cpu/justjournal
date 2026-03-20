@@ -60,8 +60,34 @@ export default function Dashboard() {
                     <td>{formatDate(t.date)}</td>
                     <td><strong>{t.pair}</strong></td>
                     {mode === 'practice' && <td>{t.session || '—'}</td>}
-                    <td><span className={`pill ${t.model === 'Model 2' ? 'pM2' : t.model === 'Practice Model' ? 'pPM' : 'pM1'}`}>{t.model === 'Practice Model' ? 'Practice' : t.model}</span></td>
-                    {mode !== 'practice' && <td><span className={`pill ${t.grade === 'A+' ? 'pAp' : t.grade === 'A' ? 'pB' : 'pLow'}`}>{t.grade}</span></td>}
+                    <td>
+                      <span 
+                        className={`pill ${
+                          t.model === 'Practice' || t.model === 'Practice Model' ? 'pPM' :
+                          t.model === 'Model 2' ? 'pM2' :
+                          t.model?.toLowerCase() === 'model 3' ? 'pM3' : 'pM1'
+                        }`}
+                        style={
+                          t.model === 'Practice' || t.model === 'Practice Model' ? {} :
+                          t.model_color ? {
+                            backgroundColor: t.model_color.bg,
+                            color: t.model_color.text,
+                            borderColor: t.model_color.border,
+                            borderWidth: '1px',
+                            borderStyle: 'solid'
+                          } : (t.model?.toLowerCase() === 'model 3' ? {
+                            backgroundColor: '#FDF2F8',
+                            color: '#DB2777',
+                            borderColor: '#FCE7F3',
+                            borderWidth: '1px',
+                            borderStyle: 'solid'
+                          } : {})
+                        }
+                      >
+                        {t.model === 'Practice Model' ? 'Practice' : t.model}
+                      </span>
+                    </td>
+                    {mode !== 'practice' && <td><span className={`pill ${t.grade === 'A+' ? 'pAp' : t.grade === 'A' ? 'pA' : t.grade === 'B' ? 'pB' : t.grade === 'C' ? 'pC' : 'pLow'}`}>{t.grade}</span></td>}
                     <td>{t.result ? <span className={`pill ${t.result === 'Win' ? 'pWin' : t.result === 'Loss' ? 'pLoss' : 'pBE'}`}>{t.result}</span> : '—'}</td>
                     <td className={t.pnl_percentage > 0 ? 'rp' : t.pnl_percentage < 0 ? 'rn' : 'mono'}>{t.pnl_percentage != null ? `${t.pnl_percentage >= 0 ? '+' : ''}${parseFloat(t.pnl_percentage).toFixed(2)}%` : '—'}</td>
                   </tr>

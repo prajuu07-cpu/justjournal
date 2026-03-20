@@ -87,7 +87,11 @@ def _get_model_color(model: str, uid: ObjectId) -> Optional[dict]:
     return None
 
 def _calc_grade(score: int) -> str:
-    return "A+" if score >= 90 else "A" if score >= 75 else "Draft"
+    if score >= 90: return "A+"
+    if score >= 75: return "A"
+    if score >= 60: return "B"
+    if score >= 50: return "C"
+    return "Avoid"
 
 def _calc_pnl(risk: float, r_mult) -> Optional[float]:
     if r_mult is None:
@@ -121,8 +125,8 @@ def list_trades():
     db   = get_db()
     mode = get_mode()
 
-    # Base filter: same user AND same mode
-    filt = {"user_id": uid, "mode": mode}
+    # Base filter: same user AND same mode AND NOT binned
+    filt = {"user_id": uid, "mode": mode, "status": {"$ne": "binned"}}
 
     for key in ("model", "grade", "status", "result"):
         val = request.args.get(key)
@@ -131,7 +135,14 @@ def list_trades():
 
     print(f"[DEBUG trades/list] User: {uid} | Mode: {mode} | Filter: {filt}")
     trades = list(db.trades.find(filt).sort([("date", -1), ("created_at", -1)]))
-    return jsonify(trades=[_trade_out(t) for t in trades])
+    
+    # Get all unique model names for the current user and mode
+    available_models = db.trades.distinct("model", {"user_id": uid, "mode": mode})
+    
+    return jsonify(
+        trades=[_trade_out(t) for t in trades],
+        models=available_models
+    )
 
 
 # ── GET /api/trades/<id> ──────────────────────────────────────────────────────
@@ -199,7 +210,9 @@ def create_trade():
         return jsonify(error="Status must be 'draft' or 'final'"), 400
 
     score = _calc_score(model, checklist, uid)
-    grade = _calc_grade(score)
+    # Respect manual grade for Practice mode, otherwise calculate from score
+    grade = data.get("grade") if model == "Practice" else _calc_grade(score)
+    if not grade: grade = _calc_grade(score)
 
     result: Optional[str]  = None
     r_multiple: Optional[float] = None
@@ -325,7 +338,9 @@ def update_trade(trade_id):
         return jsonify(error="Risk % must be between 0.01 and 5"), 400
 
     score = _calc_score(model, checklist, uid)
-    grade = _calc_grade(score)
+    # Respect manual grade for Practice mode, otherwise calculate from score
+    grade = data.get("grade") if model == "Practice" else _calc_grade(score)
+    if not grade: grade = _calc_grade(score)
 
     result     = existing.get("result")
     r_multiple = existing.get("r_multiple")
@@ -461,12 +476,22 @@ def delete_trade(trade_id):
     if not oid:
         return jsonify(error="Invalid ID"), 400
 
-    res = db.trades.delete_one({"_id": oid, "user_id": uid, "mode": get_mode()})
-    if res.deleted_count == 0:
-        return jsonify(error="Trade not found"), 404
-
-    rebuild_reports(str(uid))
-    return jsonify(message="Trade deleted")
+    mode = get_mode()
+    if mode == "practice":
+        res = db.trades.update_one(
+            {"_id": oid, "user_id": uid, "mode": "practice"},
+            {"$set": {"status": "binned", "deleted_at": _now_iso()}}
+        )
+        if res.matched_count == 0:
+            return jsonify(error="Trade not found"), 404
+        rebuild_reports(str(uid))
+        return jsonify(message="Trade moved to bin")
+    else:
+        res = db.trades.delete_one({"_id": oid, "user_id": uid, "mode": mode})
+        if res.deleted_count == 0:
+            return jsonify(error="Trade not found"), 404
+        rebuild_reports(str(uid))
+        return jsonify(message="Trade deleted")
 
 
 # ── GET /api/trades/limit-status ──────────────────────────────────────────────
@@ -525,15 +550,18 @@ def delete_drafts():
     db   = get_db()
     mode = get_mode()
     
-    del_filt = {"user_id": uid, "status": "draft"}
-    del_filt["mode"] = mode
-
-    res = db.trades.delete_many(del_filt)
+    del_filt = {"user_id": uid, "status": "draft", "mode": mode}
+    if mode == "practice":
+        res = db.trades.update_many(del_filt, {"$set": {"status": "binned", "deleted_at": _now_iso()}})
+        msg = f"Moved {res.modified_count} draft trades to bin."
+    else:
+        res = db.trades.delete_many(del_filt)
+        msg = f"Deleted {res.deleted_count} draft trades ({mode})."
     
-    if res.deleted_count > 0:
+    if (mode == "practice" and res.modified_count > 0) or (mode != "practice" and res.deleted_count > 0):
         rebuild_reports(str(uid))
         
-    return jsonify(message=f"Deleted {res.deleted_count} draft trades ({mode}).")
+    return jsonify(message=msg)
 
 
 # ── DELETE /api/trades/all ────────────────────────────────────────────────────
@@ -544,14 +572,129 @@ def delete_all_trades():
     db   = get_db()
     mode = get_mode()
     
-    del_filt = {"user_id": uid, "mode": mode}
+    del_filt = {"user_id": uid, "mode": mode, "status": {"$ne": "binned"}}
+    if mode == "practice":
+        res = db.trades.update_many(del_filt, {"$set": {"status": "binned", "deleted_at": _now_iso()}})
+        msg = f"Moved {res.modified_count} trades to bin."
+    else:
+        res = db.trades.delete_many(del_filt)
+        msg = f"Deleted {res.deleted_count} trades ({mode})."
 
-    res = db.trades.delete_many(del_filt)
-    
-    if res.deleted_count > 0:
+    if (mode == "practice" and res.modified_count > 0) or (mode != "practice" and res.deleted_count > 0):
         rebuild_reports(str(uid))
         
-    return jsonify(message=f"Deleted {res.deleted_count} trades ({mode}).")
+    return jsonify(message=msg)
+    
+# ── DELETE /api/trades/by-grade ──────────────────────────────────────────────
+@trades_bp.delete("/by-grade")
+@jwt_required()
+def delete_trades_by_grade():
+    uid  = ObjectId(get_jwt_identity())
+    db   = get_db()
+    mode = get_mode()
+    grade = request.args.get("grade")
+    
+    if not grade:
+        return jsonify(error="Grade is required"), 400
+        
+    del_filt = {"user_id": uid, "mode": mode, "grade": grade}
+    
+    if mode == "practice":
+        res = db.trades.update_many(del_filt, {"$set": {"status": "binned", "deleted_at": _now_iso()}})
+        msg = f"Moved {res.modified_count} trades with grade {grade} to bin."
+    else:
+        res = db.trades.delete_many(del_filt)
+        msg = f"Deleted {res.deleted_count} trades with grade {grade}."
+    
+    if res.acknowledged and (res.modified_count > 0 or (hasattr(res, 'deleted_count') and res.deleted_count > 0)):
+        rebuild_reports(str(uid))
+        
+    return jsonify(message=msg)
+    
+# ── GET /api/trades/bin ─────────────────────────────────────────────────────
+@trades_bp.get("/bin")
+@jwt_required()
+def list_binned_trades():
+    uid  = ObjectId(get_jwt_identity())
+    db   = get_db()
+    mode = get_mode()
+    
+    filt = {"user_id": uid, "mode": mode, "status": "binned"}
+    trades = list(db.trades.find(filt).sort("deleted_at", -1))
+    
+    return jsonify(trades=[_trade_out(t) for t in trades])
+
+# ── POST /api/trades/<trade_id>/restore ──────────────────────────────────────
+@trades_bp.post("/<trade_id>/restore")
+@jwt_required()
+def restore_trade(trade_id):
+    uid = ObjectId(get_jwt_identity())
+    db  = get_db()
+    oid = _oid(trade_id)
+    if not oid:
+        return jsonify(error="Invalid ID"), 400
+        
+    res = db.trades.update_one(
+        {"_id": oid, "user_id": uid, "status": "binned"},
+        {"$set": {"status": "final"}, "$unset": {"deleted_at": ""}}
+    )
+    
+    if res.matched_count == 0:
+        return jsonify(error="Trade not found in bin"), 404
+        
+    rebuild_reports(str(uid))
+    return jsonify(message="Trade restored")
+
+# ── POST /api/trades/bin/restore-by-grade ─────────────────────────────────────
+@trades_bp.post("/bin/restore-by-grade")
+@jwt_required()
+def restore_trades_by_grade():
+    uid  = ObjectId(get_jwt_identity())
+    db   = get_db()
+    mode = get_mode()
+    grade = request.args.get("grade")
+    
+    if not grade:
+        return jsonify(error="Grade is required"), 400
+        
+    res = db.trades.update_many(
+        {"user_id": uid, "mode": mode, "status": "binned", "grade": grade},
+        {"$set": {"status": "final"}, "$unset": {"deleted_at": ""}}
+    )
+    
+    if res.modified_count > 0:
+        rebuild_reports(str(uid))
+        
+    return jsonify(message=f"Restored {res.modified_count} trades with grade {grade}.")
+
+# ── DELETE /api/trades/<trade_id>/permanent ──────────────────────────────────
+@trades_bp.delete("/<trade_id>/permanent")
+@jwt_required()
+def permanent_delete_trade(trade_id):
+    uid = ObjectId(get_jwt_identity())
+    db  = get_db()
+    oid = _oid(trade_id)
+    if not oid:
+        return jsonify(error="Invalid ID"), 400
+        
+    res = db.trades.delete_one({"_id": oid, "user_id": uid, "status": "binned"})
+    
+    if res.deleted_count == 0:
+        return jsonify(error="Trade not found in bin"), 404
+        
+    return jsonify(message="Trade permanently deleted")
+
+# ── DELETE /api/trades/bin/empty ─────────────────────────────────────────────
+@trades_bp.delete("/bin/empty")
+@jwt_required()
+def empty_trade_bin():
+    uid  = ObjectId(get_jwt_identity())
+    db   = get_db()
+    mode = get_mode()
+    
+    res = db.trades.delete_many({"user_id": uid, "mode": mode, "status": "binned"})
+    
+    return jsonify(message=f"Deleted {res.deleted_count} trades permanently.")
 
 
 # ── GET /api/trades/month/<year>/<month> ──────────────────────────────────────

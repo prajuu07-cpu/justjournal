@@ -283,7 +283,7 @@ def _build_month_pdf(username: str, year: int, month: int,
             _stat_box("Net PNL",         _pf(npnl, "%"),                           npnl_c,     col_w),
             _stat_box("Avg RR",          _pf(s.get("avgRR")),                      C_INDIGO,   col_w),
             _stat_box("Max Loss Streak", str(s.get("maxLossStreak", 0)),            C_LOSS,     col_w),
-            _stat_box("",                "",                                       colors.white, col_w),
+            "",
         ],
     ]
     story.append(Table(

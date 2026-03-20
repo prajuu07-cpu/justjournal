@@ -22,6 +22,12 @@ export default function Bin() {
   };
 
   useEffect(() => {
+    if (mode === 'practice') {
+      nav('/trade-bin', { replace: true });
+    }
+  }, [mode, nav]);
+
+  useEffect(() => {
     fetchBin();
   }, []);
 
@@ -59,7 +65,9 @@ export default function Bin() {
     <div className="page">
       <div className="page-hd">
         <h1>Model Bin</h1>
-        <button className="btn btn-danger" onClick={handleEmpty} disabled={binnedAll.length === 0}>Empty Bin</button>
+        <div className="header-btns">
+          <button className="btn btn-danger" onClick={handleEmpty} disabled={binnedAll.length === 0}>Empty Bin</button>
+        </div>
       </div>
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

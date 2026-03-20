@@ -9,9 +9,10 @@ export default function Journal() {
   const nav = useNavigate();
   const { mode, customModels, userSettings } = useMode();
   const [trades,    setTrades]    = useState([]);
+  const [availableModels, setAvailableModels] = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [editing,   setEditing]   = useState(null);
-  const [filter,    setFilter]    = useState({ model: 'All', grade: 'All', result: 'All' });
+  const [filter,    setFilter]    = useState({ model: 'All', grade: 'All', result: 'All', status: 'All' });
   const [addResult, setAddResult] = useState(null); // { trade, result:'', rMult:'' }
   const [err,       setErr]       = useState('');
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -35,9 +36,13 @@ export default function Journal() {
     if (filter.model  !== 'All') params.model = filter.model;
     if (filter.grade  !== 'All') params.grade = filter.grade;
     if (filter.result !== 'All') params.result = filter.result;
+    if (filter.status !== 'All') params.status = filter.status.toLowerCase();
 
     api.get('/trades', { params })
-      .then(r => setTrades(r.data.trades))
+      .then(r => {
+        setTrades(r.data.trades);
+        if (r.data.models) setAvailableModels(r.data.models);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [filter, mode]);
@@ -84,6 +89,19 @@ export default function Journal() {
     }
   };
 
+  const deleteByGrade = async (g) => {
+    setDeleteOpen(false);
+    if (!window.confirm(`Delete all trades with grade ${g}? This cannot be undone.`)) return;
+    try {
+      await api.delete('/trades/by-grade', { params: { grade: g } });
+      load();
+    } catch (ex) {
+      setErr(ex.response?.data?.error || 'Failed to delete trades by grade');
+    }
+  };
+
+  const uniqueGrades = [...new Set(trades.map(t => t.grade).filter(g => g && g !== 'Draft'))].sort();
+
 
   if (editing) return <NewTrade editTrade={editing} onDone={() => { setEditing(null); load(); }} />;
 
@@ -91,7 +109,7 @@ export default function Journal() {
     <div className="page">
       <div className="page-hd">
         <h1>Trade Journal</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="header-btns">
           {mode === 'practice' ? (
             <div ref={deleteRef} style={{ position: 'relative' }}>
               <button
@@ -130,6 +148,19 @@ export default function Journal() {
                   >
                     Delete All Trades
                   </button>
+                  {uniqueGrades.map(g => (
+                    <button
+                      key={g}
+                      style={{ display:'block', width:'100%', padding:'12px 16px', textAlign:'left',
+                        background:'none', border:'none', cursor:'pointer', fontSize:14,
+                        color:'var(--danger)', fontWeight:600, borderTop:'1px solid var(--border)' }}
+                      onMouseOver={e => e.currentTarget.style.background='var(--danger-bg)'}
+                      onMouseOut={e => e.currentTarget.style.background='none'}
+                      onClick={() => deleteByGrade(g)}
+                    >
+                      Delete Grade {g}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
@@ -145,13 +176,45 @@ export default function Journal() {
         {[
           { 
             key: 'model',  
-            opts: mode === 'practice' 
-              ? [{ label: 'All Models', value: 'All' }, { label: 'Practice', value: 'Practice' }] 
-              : [{ label: 'All Models', value: 'All' }, { label: 'Model 1', value: 'Model 1' }, { label: 'Model 2', value: 'Model 2' }]
+            opts: (() => {
+              const sorted = [...availableModels].filter(m => m && m.trim() !== '');
+              sorted.sort((a, b) => {
+                const la = a.toLowerCase();
+                const lb = b.toLowerCase();
+                
+                // Practice first
+                if (la === 'practice' || la === 'practice model') return -1;
+                if (lb === 'practice' || lb === 'practice model') return 1;
+                
+                // Then anything starting with "Model" (e.g., Model 1, Model 2, model 3)
+                const isModelA = la.startsWith('model');
+                const isModelB = lb.startsWith('model');
+                
+                if (isModelA && !isModelB) return -1;
+                if (!isModelA && isModelB) return 1;
+                
+                // Natural alphanumeric sort for everything else (handles Model 1, Model 2, Model 10 correctly)
+                return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+              });
+              return [{ label: 'All Models', value: 'All' }, ...sorted.map(m => ({ label: m, value: m }))];
+            })()
           },
-          { key: 'grade',  opts: (mode === 'practice' ? ['All Grades', 'Draft'] : ['All Grades', 'A+', 'A', 'Draft']).map(o => ({ label: o, value: o })) },
-          { key: 'result', opts: ['All Results', 'Win', 'Loss', 'Breakeven'].map(o => ({ label: o, value: o })) },
-        ].filter(f => mode !== 'practice' || f.key !== 'grade').map(f => (
+          { 
+            key: 'grade',  
+            opts: [
+              { label: 'All Grades', value: 'All' }, 
+              ...['A+', 'A', 'B', 'C', ...(mode === 'practice' ? [] : ['Avoid'])].map(o => ({ label: o, value: o }))
+            ] 
+          },
+          { 
+            key: 'result', 
+            opts: [{ label: 'All Results', value: 'All' }, ...['Win', 'Loss', 'Breakeven'].map(o => ({ label: o, value: o }))] 
+          },
+          { 
+            key: 'status', 
+            opts: [{ label: 'All Status', value: 'All' }, { label: 'Final', value: 'Final' }, { label: 'Draft', value: 'Draft' }] 
+          },
+        ].map(f => (
           <select
             key={f.key}
             className="fsel"
@@ -184,7 +247,7 @@ export default function Journal() {
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>Date</th><th>Pair</th>{mode === 'practice' && <th>Session</th>}<th>Model</th>{mode !== 'practice' && <th>Grade</th>}
+                  <th>Date</th><th>Pair</th>{mode === 'practice' && <th>Session</th>}<th>Model</th><th>Grade</th>
                   <th>Status</th><th>RR</th><th>PNL</th><th>Result</th><th></th>
                 </tr>
               </thead>
@@ -221,7 +284,21 @@ export default function Journal() {
                         {t.model === 'Practice Model' ? 'Practice' : t.model}
                       </span>
                     </td>
-                    {mode !== 'practice' && <td><span className={`pill ${t.grade === 'A+' ? 'pAp' : t.grade === 'A' ? 'pB' : 'pLow'}`}>{t.grade}</span></td>}
+                    <td>
+                      <span className={`pill ${
+                        (t.grade === 'A+' && t.model === 'Practice') ? 'pAp' : 
+                        (t.grade === 'A' && t.model === 'Practice') ? 'pA' : 
+                        (t.grade === 'B' && t.model === 'Practice') ? 'pB' : 
+                        (t.grade === 'C' && t.model === 'Practice') ? 'pC' : 
+                        (t.model !== 'Practice' && t.grade === 'A+') ? 'pAp' :
+                        (t.model !== 'Practice' && t.grade === 'A') ? 'pA' :
+                        (t.model !== 'Practice' && t.grade === 'B') ? 'pB' :
+                        (t.model !== 'Practice' && t.grade === 'C') ? 'pC' :
+                        (t.grade === 'Draft' || (t.model === 'Practice' && t.grade === 'Avoid')) ? 'pDft' : 'pLow'
+                      }`}>
+                        {(t.model === 'Practice' && t.grade === 'Avoid') ? 'Draft' : (t.grade || 'Draft')}
+                      </span>
+                    </td>
                     <td><span className={`pill ${t.status === 'final' ? 'pFin' : 'pDft'}`}>{t.status}</span></td>
                     <td className="mono">{t.r_multiple != null ? `${parseFloat(t.r_multiple).toFixed(2)}R` : '—'}</td>
                     <td className={t.pnl_percentage > 0 ? 'rp' : t.pnl_percentage < 0 ? 'rn' : 'mono'}>

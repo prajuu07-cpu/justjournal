@@ -50,9 +50,11 @@ a{text-decoration:none;color:inherit}
 
 /* ── PILLS ───────────────────────────────────────────────────── */
 .pill{font-size:11px;font-weight:600;padding:4px 10px;border-radius:99px;letter-spacing:.3px;display:inline-block}
-.pAp{background:#FFEDD5;color:#EA580C;border:1px solid #FED7AA}
-.pB{background:#FFF7ED;color:#F97316;border:1px solid #FFEDD5}
-.pLow{background:#FEE2E2;color:#EF4444;border:1px solid #FECACA}
+.pAp{background:#FDF4FF;color:#7E22CE;border:1px solid #E9D5FF} /* Grade A+ */
+.pA{background:#EFF6FF;color:#2563EB;border:1px solid #DBEAFE}  /* Grade A */
+.pB{background:#F0FDF4;color:#16A34A;border:1px solid #DCFCE7}  /* Grade B */
+.pC{background:#FFFBEB;color:#D97706;border:1px solid #FEF3C7}  /* Grade C */
+.pLow{background:#FEE2E2;color:#EF4444;border:1px solid #FECACA} /* Avoid */
 .pFin{background:var(--success-bg);color:var(--success);border:1px solid #BBF7D0}
 .pDft{background:#FEF3C7;color:#D97706;border:1px solid #FDE68A}
 .pWin{background:var(--success-bg);color:var(--success);border:1px solid #BBF7D0}
@@ -140,6 +142,19 @@ select option{background:var(--card)}
 .loading.full-page{height:100vh;display:flex;align-items:center;justify-content:center}
 .err-box{background:var(--danger-bg);border:1px solid #FECACA;border-radius:12px;padding:12px 16px;color:var(--danger);font-size:14px;font-weight:600;margin-bottom:20px; display:flex; align-items:center; gap:8px;}
 .empty{text-align:center;padding:64px;color:var(--muted);font-size:15px; font-weight:500; background:var(--card); border:1px dashed var(--border2); border-radius:16px;}
+.hd-actions, .header-btns { display: flex; gap: 10px; align-items: center; }
 
 /* ── SCROLLBAR ───────────────────────────────────────────────── */
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  .hide-m { display: none !important; }
+  .page-hd { flex-direction: column; align-items: stretch; gap: 12px; }
+  .hd-actions, .header-btns { flex-wrap: wrap; width: 100%; justify-content: flex-end; }
+  .hd-actions > *, .header-btns > * { min-width: 120px; }
+  .tbl-wrap { border-radius: 0; }
+  .tbl th, .tbl td { padding: 12px 8px; font-size: 13px; }
+  .sg { grid-template-columns: 1fr; }
+  .card { padding: 16px; border-radius: 12px; }
+}

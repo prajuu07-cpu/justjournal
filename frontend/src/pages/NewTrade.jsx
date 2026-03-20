@@ -43,6 +43,8 @@ function calcScore(cl, items) {
 function calcGrade(sc) { 
   if (sc >= 90) return 'A+';
   if (sc >= 75) return 'A';
+  if (sc >= 60) return 'B';
+  if (sc >= 50) return 'C';
   return 'Avoid'; 
 }
 function getMissing(cl, items) { 
@@ -90,6 +92,7 @@ export default function NewTrade({ editTrade, onDone }) {
   const [err,    setErr]    = useState('');
   const [limitModal, setLimitModal] = useState('');
   const [busy,   setBusy]   = useState(false);
+  const [manualGrade, setManualGrade] = useState(() => editTrade?.grade || '');
 
   // Reset model if it's not valid for the current mode on mode switch
   useEffect(() => {
@@ -140,7 +143,7 @@ export default function NewTrade({ editTrade, onDone }) {
   const theme = MODEL_THEMES[model] || MODEL_THEMES['Model 1'];
 
   const score   = useMemo(()=>calcScore(cl, activeItems),[cl, activeItems]);
-  const grade   = calcGrade(score);
+  const grade   = mode === 'practice' ? manualGrade : calcGrade(score);
   const missing = useMemo(()=>getMissing(cl, activeItems),[cl, activeItems]);
 
   const toggle = k => setCl(p=>({...p,[k]:!p[k]}));
@@ -154,14 +157,9 @@ export default function NewTrade({ editTrade, onDone }) {
     if (!asFinal && result) { setErr('Save to final trades'); return; }
 
     const isPractice = mode === 'practice';
+    if (isPractice && !manualGrade) { setErr('Please select a Grade'); return; }
 
-    if (asFinal && !isPractice) {
-      if (missing.length) { setErr('You must complete all required checklist items before finalizing the trade.'); return; }
-      if (score < 75) { 
-        setErr('Minimum Score Required. You must reach at least 75 points to finalize the trade.'); 
-        return; 
-      }
-    }
+    // No required checklist item or score limitations for final trades
 
     let rm=null, res_=result||null;
     if (asFinal && res_) {
@@ -182,7 +180,8 @@ export default function NewTrade({ editTrade, onDone }) {
         notes, 
         status: asFinal ? 'final' : 'draft', 
         result: res_, 
-        r_multiple: rm 
+        r_multiple: rm,
+        grade: grade
       };
       if (isEdit) await api.put(`/trades/${editTrade.id}`, payload);
       else        await api.post('/trades', payload);
@@ -199,7 +198,7 @@ export default function NewTrade({ editTrade, onDone }) {
     } finally { setBusy(false); }
   };
 
-  const barColor = score>=90?'#7c3aed':score>=75?'#0284c7':score>=40?'#d97706':'#e11d48';
+  const barColor = score>=90?'#7c3aed':score>=75?'#0284c7':score>=60?'#2563EB':score>=50?'#D97706':'#e11d48';
 
   const handleDeleteModel = async (modelName) => {
     if (!modelName) return;
@@ -313,8 +312,8 @@ export default function NewTrade({ editTrade, onDone }) {
         <h1>{isEdit ? 'Edit Trade' : 'New Trade'}</h1>
         <div className="hd-actions">
           <button className="btn btn-ghost" onClick={() => onDone ? onDone() : nav('/journal')}>Cancel</button>
-          <button className="btn btn-ghost" onClick={() => save(false)} disabled={busy}>Save Draft</button>
-          <button className="btn btn-ok" onClick={() => save(true)} disabled={busy}>Save Final</button>
+          <button className="btn btn-ghost" onClick={() => save(false)} disabled={busy || (mode === 'practice' && !manualGrade)}>Save Draft</button>
+          <button className="btn btn-ok" onClick={() => save(true)} disabled={busy || (mode === 'practice' && !manualGrade)}>Save Final</button>
         </div>
       </div>
 
@@ -410,8 +409,19 @@ export default function NewTrade({ editTrade, onDone }) {
           <div className="field"><label>Risk % *</label><input type="number" value={risk} onChange={e=>setRisk(e.target.value)} placeholder="1.0" min="0.01" max="5" step="0.01"/></div>
           {mode === 'practice' && (
             <div className="field">
-              <label>Session</label>
-              <input list="session-opts" value={session} onChange={e=>setSession(e.target.value)} placeholder="Select or type..." autoComplete="off"/>
+              <div style={{display:'flex', gap: 12}}>
+                <div style={{flex: 2}}>
+                  <label>Session</label>
+                  <input list="session-opts" value={session} onChange={e=>setSession(e.target.value)} placeholder="Select or type..." autoComplete="off"/>
+                </div>
+                <div style={{flex: 1}}>
+                  <label>Grade *</label>
+                  <select value={manualGrade} onChange={e => setManualGrade(e.target.value)} className="fsel" style={{width: '100%', height: '42px'}}>
+                    <option value="">Select</option>
+                    {['A+', 'A', 'B', 'C'].map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </div>
+              </div>
               <datalist id="session-opts">
                 <option value="London"/>
                 <option value="New York"/>
@@ -441,11 +451,7 @@ export default function NewTrade({ editTrade, onDone }) {
           
 
 
-          {missing.length > 0 && (
-            <div className="mand-warn" style={{ '--w-bg': dynamicTheme.wBg, '--w-border': dynamicTheme.wBorder, '--w-text': dynamicTheme.wText, '--w-ul': dynamicTheme.wUl }}>
-              <div><strong>Required before Final:</strong><ul>{missing.map(l=><li key={l}>{l}</li>)}</ul></div>
-            </div>
-          )}
+          {/* Removed Required before Final box */}
 
           <div className="sc-blk" style={{padding: '20px', borderRadius: '16px'}}>
             <div className="sc-label" style={{marginBottom: '12px', fontSize: '0.9rem', letterSpacing: '0.05em'}}>{model} · MODEL SCORE</div>
@@ -456,23 +462,21 @@ export default function NewTrade({ editTrade, onDone }) {
                 <div className="sc-n" style={{color:barColor, fontSize: '2.5rem', textAlign: 'left', lineHeight: 1, fontWeight: 900}}>{score}</div>
               </div>
               
-              {score >= 75 && (
-                <div style={{textAlign: 'right'}}>
-                  <div style={{fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4}}>Grade</div>
-                  <div style={{
-                    background: barColor + '15', 
-                    color: barColor,
-                    border: `1.5px solid ${barColor}44`,
-                    padding: '6px 20px', 
-                    borderRadius: '12px',
-                    fontSize: '1.5rem',
-                    fontWeight: 900,
-                    boxShadow: `0 4px 12px ${barColor}15`
-                  }}>
-                    {grade}
-                  </div>
+              <div style={{textAlign: 'right'}}>
+                <div style={{fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4}}>Grade</div>
+                <div style={{
+                  background: barColor + '15', 
+                  color: barColor,
+                  border: `1.5px solid ${barColor}44`,
+                  padding: '6px 20px', 
+                  borderRadius: '12px',
+                  fontSize: '1.5rem',
+                  fontWeight: 900,
+                  boxShadow: `0 4px 12px ${barColor}15`
+                }}>
+                  {grade}
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="sc-bg" style={{height: '10px', borderRadius: '5px', background: '#f1f5f9', overflow:'hidden'}}>
@@ -488,7 +492,7 @@ export default function NewTrade({ editTrade, onDone }) {
         </div>
       )}
 
-      {(mode === 'practice' || score >= 75) && (
+      {(mode === 'practice' || score >= 50) && (
         <div className="card">
           <div className="form-sec">Result (optional — add after trade closes)</div>
           <div className="g2">

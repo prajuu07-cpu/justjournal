@@ -31,7 +31,7 @@ def get_custom_models():
     if mode_filter:
         query["mode"] = mode_filter
         
-    models = list(db.custom_models.find(query))
+    models = list(db.custom_models.find(query).sort('created_at', 1))
     for m in models:
         m['_id'] = str(m['_id'])
         if 'user_id' in m: m['user_id'] = str(m['user_id'])

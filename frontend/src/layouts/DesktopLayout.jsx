@@ -7,6 +7,7 @@ import ModelBuilder from '../pages/ModelBuilder';
 import { MonthlyReports, YearlyReports } from '../pages/Reports';
 import SetLimit from '../pages/SetLimit';
 import Bin from '../pages/Bin';
+import TradeBin from '../pages/TradeBin';
 import '../styles/desktop.css';
 
 import ModeSwitch from '../components/ModeSwitch';
@@ -32,11 +33,9 @@ export default function DesktopLayout() {
           <NavLink to="/monthly"          className={({isActive})=>isActive?'nav-item active':'nav-item'}>Monthly</NavLink>
           <NavLink to="/yearly"           className={({isActive})=>isActive?'nav-item active':'nav-item'}>Yearly</NavLink>
           {mode === 'justchill' && (
-            <>
-              <NavLink to="/settings" className={({isActive})=>isActive?'nav-item active':'nav-item'}>Set Limit</NavLink>
-              <NavLink to="/bin" className={({isActive})=>isActive?'nav-item active':'nav-item'}>Bin</NavLink>
-            </>
+            <NavLink to="/settings" className={({isActive})=>isActive?'nav-item active':'nav-item'}>Set Limit</NavLink>
           )}
+          <NavLink to={mode === 'practice' ? '/trade-bin' : '/bin'} className={({isActive})=>isActive?'nav-item active':'nav-item'}>Bin</NavLink>
         </nav>
         <div className="sidebar-foot">
           <div className="user-info">@{user?.username}</div>
@@ -54,6 +53,7 @@ export default function DesktopLayout() {
           <Route path="/model-builder" element={<ModelBuilder/>}/>
           <Route path="/settings"  element={<SetLimit/>}/>
           <Route path="/bin"       element={<Bin/>}/>
+          <Route path="/trade-bin" element={<TradeBin/>}/>
           <Route path="*"          element={<Navigate to="/" replace/>}/>
         </Routes>
       </main>

@@ -62,7 +62,7 @@ export function MonthlyReports() {
     <div className="page">
       <div className="page-hd">
         <h1>Monthly Dashboard</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="header-btns">
           <button className="btn btn-ghost" onClick={exportPDF} disabled={exporting}>
             {exporting ? 'Exporting…' : '⬇ Export PDF'}
           </button>
@@ -136,7 +136,7 @@ export function MonthlyReports() {
                           {t.model === 'Practice Model' ? 'Practice' : t.model}
                         </span>
                       </td>
-                      {mode !== 'practice' && <td><span className={`pill ${t.grade==='A+'?'pAp':t.grade==='A'?'pB':'pLow'}`}>{t.grade}</span></td>}
+                      {mode !== 'practice' && <td><span className={`pill ${t.grade==='A+'?'pAp':t.grade==='A'?'pA':t.grade==='B'?'pB':t.grade==='C'?'pC':'pLow'}`}>{t.grade}</span></td>}
                       <td>{t.direction}</td><td>{t.risk_percent}%</td>
                       <td>{t.result?<span className={`pill ${t.result==='Win'?'pWin':t.result==='Loss'?'pLoss':'pBE'}`}>{t.result}</span>:'—'}</td>
                       <td className="mono">{t.r_multiple?`${parseFloat(t.r_multiple).toFixed(2)}R`:'—'}</td>
@@ -197,7 +197,7 @@ export function YearlyReports() {
     <div className="page">
       <div className="page-hd">
         <h1>Yearly Dashboard</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="header-btns">
           <button className="btn btn-ghost" onClick={exportPDF} disabled={exporting}>
             {exporting ? 'Exporting…' : '⬇ Export PDF'}
           </button>
@@ -273,7 +273,7 @@ export function YearlyReports() {
                           {t.model === 'Practice Model' ? 'Practice' : t.model}
                         </span>
                       </td>
-                      {mode !== 'practice' && <td><span className={`pill ${t.grade==='A+'?'pAp':t.grade==='A'?'pB':'pLow'}`}>{t.grade}</span></td>}
+                      {mode !== 'practice' && <td><span className={`pill ${t.grade==='A+'?'pAp':t.grade==='A'?'pA':t.grade==='B'?'pB':t.grade==='C'?'pC':'pLow'}`}>{t.grade}</span></td>}
                       <td>{t.direction}</td><td>{t.risk_percent}%</td>
                       <td>{t.result?<span className={`pill ${t.result==='Win'?'pWin':t.result==='Loss'?'pLoss':'pBE'}`}>{t.result}</span>:'—'}</td>
                       <td className="mono">{t.r_multiple?`${parseFloat(t.r_multiple).toFixed(2)}R`:'—'}</td>

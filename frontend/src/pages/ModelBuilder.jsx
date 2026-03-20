@@ -10,7 +10,7 @@ export default function ModelBuilder() {
   const [name, setName] = useState('');
   const [checklist, setChecklist] = useState([]);
   const [modelNotes, setModelNotes] = useState('');
-  const [newItem, setNewItem] = useState({ label: '', weight: '', required: false });
+  const [newItem, setNewItem] = useState({ label: '', weight: '' });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [dupModal, setDupModal] = useState(false);
@@ -27,10 +27,9 @@ export default function ModelBuilder() {
       const w = parseInt(newItem.weight) || 0;
       setChecklist([...checklist, { 
         label: newItem.label.trim(), 
-        weight: w, 
-        required: newItem.required 
+        weight: w
       }]);
-      setNewItem({ label: '', weight: '', required: false });
+      setNewItem({ label: '', weight: '' });
     }
   };
 
@@ -169,19 +168,7 @@ export default function ModelBuilder() {
                     style={{background: '#fff'}}
                   />
                 </div>
-                <div className="field" style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center'}}>
-                   <label style={{fontSize: '0.75rem', color: '#64748b', display:'block', marginBottom: 4}}>Required?</label>
-                   <div 
-                     onClick={() => setNewItem({...newItem, required: !newItem.required})}
-                     style={{
-                       width: 44, height: 44, background: newItem.required ? '#7c3aed' : '#fff', 
-                       border: '2px solid #7c3aed', borderRadius: 8, cursor: 'pointer',
-                       display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
-                     }}
-                   >
-                     {newItem.required && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
-                   </div>
-                </div>
+                <div className="field" style={{flex:1}}/>
               </div>
               <button className="btn btn-ok" onClick={addItem} style={{width:'100%'}}>+ Add to Checklist</button>
             </div>
@@ -200,7 +187,6 @@ export default function ModelBuilder() {
                     <div style={{display:'flex', alignItems:'center', gap:10}}>
                       <div style={{flex:1, fontWeight:700, fontSize: '0.95rem'}}>
                         {item.label}
-                        {item.required && <span style={{marginLeft: 8, fontSize: '0.7rem', color: '#e11d48', background: '#fff1f2', padding: '2px 6px', borderRadius: 4, border: '1px solid #fda4af'}}>REQUIRED</span>}
                       </div>
                       <div style={{fontSize:'0.85rem', color: color, fontWeight:800, background: bg, padding: '4px 8px', borderRadius: 6}}>{item.weight} pts</div>
                       <div style={{display:'flex', gap:4}}>

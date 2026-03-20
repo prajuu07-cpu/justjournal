@@ -8,6 +8,7 @@ import { MonthlyReports, YearlyReports } from '../pages/Reports';
 import SetLimit from '../pages/SetLimit';
 import Bin from '../pages/Bin';
 import TradeBin from '../pages/TradeBin';
+import WinratePairs from '../pages/WinratePairs';
 import '../styles/desktop.css';
 
 import ModeSwitch from '../components/ModeSwitch';
@@ -32,9 +33,7 @@ export default function DesktopLayout() {
           <NavLink to="/journal"          className={({isActive})=>isActive?'nav-item active':'nav-item'}>Journal</NavLink>
           <NavLink to="/monthly"          className={({isActive})=>isActive?'nav-item active':'nav-item'}>Monthly</NavLink>
           <NavLink to="/yearly"           className={({isActive})=>isActive?'nav-item active':'nav-item'}>Yearly</NavLink>
-          {mode === 'justchill' && (
-            <NavLink to="/settings" className={({isActive})=>isActive?'nav-item active':'nav-item'}>Set Limit</NavLink>
-          )}
+          <NavLink to="/winrate-pairs" className={({isActive})=>isActive?'nav-item active':'nav-item'}>WinRate by Pairs</NavLink>
           <NavLink to={mode === 'practice' ? '/trade-bin' : '/bin'} className={({isActive})=>isActive?'nav-item active':'nav-item'}>Bin</NavLink>
         </nav>
         <div className="sidebar-foot">
@@ -54,6 +53,7 @@ export default function DesktopLayout() {
           <Route path="/settings"  element={<SetLimit/>}/>
           <Route path="/bin"       element={<Bin/>}/>
           <Route path="/trade-bin" element={<TradeBin/>}/>
+          <Route path="/winrate-pairs" element={<WinratePairs/>}/>
           <Route path="*"          element={<Navigate to="/" replace/>}/>
         </Routes>
       </main>

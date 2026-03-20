@@ -610,6 +610,33 @@ def delete_trades_by_grade():
         rebuild_reports(str(uid))
         
     return jsonify(message=msg)
+
+# ── DELETE /api/trades/by-pair ──────────────────────────────────────────────
+@trades_bp.delete("/by-pair")
+@jwt_required()
+def delete_trades_by_pair():
+    uid  = ObjectId(get_jwt_identity())
+    db   = get_db()
+    mode = get_mode()
+    pair = request.args.get("pair")
+    
+    if not pair:
+        return jsonify(error="Pair is required"), 400
+        
+    pair = pair.strip().upper()
+    del_filt = {"user_id": uid, "mode": mode, "pair": pair}
+    
+    if mode == "practice":
+        res = db.trades.update_many(del_filt, {"$set": {"status": "binned", "deleted_at": _now_iso()}})
+        msg = f"Moved {res.modified_count} trades with pair {pair} to bin."
+    else:
+        res = db.trades.delete_many(del_filt)
+        msg = f"Deleted {res.deleted_count} trades with pair {pair}."
+    
+    if res.acknowledged and (res.modified_count > 0 or (hasattr(res, 'deleted_count') and res.deleted_count > 0)):
+        rebuild_reports(str(uid))
+        
+    return jsonify(message=msg)
     
 # ── GET /api/trades/bin ─────────────────────────────────────────────────────
 @trades_bp.get("/bin")
@@ -666,6 +693,29 @@ def restore_trades_by_grade():
         rebuild_reports(str(uid))
         
     return jsonify(message=f"Restored {res.modified_count} trades with grade {grade}.")
+
+# ── POST /api/trades/bin/restore-by-pair ─────────────────────────────────────
+@trades_bp.post("/bin/restore-by-pair")
+@jwt_required()
+def restore_trades_by_pair():
+    uid  = ObjectId(get_jwt_identity())
+    db   = get_db()
+    mode = get_mode()
+    pair = request.args.get("pair")
+    
+    if not pair:
+        return jsonify(error="Pair is required"), 400
+        
+    pair = pair.strip().upper()
+    res = db.trades.update_many(
+        {"user_id": uid, "mode": mode, "status": "binned", "pair": pair},
+        {"$set": {"status": "final"}, "$unset": {"deleted_at": ""}}
+    )
+    
+    if res.modified_count > 0:
+        rebuild_reports(str(uid))
+        
+    return jsonify(message=f"Restored {res.modified_count} trades with pair {pair}.")
 
 # ── DELETE /api/trades/<trade_id>/permanent ──────────────────────────────────
 @trades_bp.delete("/<trade_id>/permanent")

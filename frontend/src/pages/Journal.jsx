@@ -16,6 +16,8 @@ export default function Journal() {
   const [addResult, setAddResult] = useState(null); // { trade, result:'', rMult:'' }
   const [err,       setErr]       = useState('');
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [showPairDeleteModal, setShowPairDeleteModal] = useState(false);
+  const [pairNameToDelete, setPairNameToDelete] = useState('');
   const deleteRef = useRef(null);
 
   // Close delete dropdown when clicking outside
@@ -100,6 +102,27 @@ export default function Journal() {
     }
   };
 
+  const deleteByPair = () => {
+    setDeleteOpen(false);
+    setPairNameToDelete('');
+    setShowPairDeleteModal(true);
+  };
+
+  const confirmDeleteByPair = async () => {
+    const pair = pairNameToDelete.trim().toUpperCase();
+    if (!pair) return;
+    
+    if (!window.confirm(`Delete ALL trades for ${pair}? This cannot be undone.`)) return;
+    
+    try {
+      await api.delete('/trades/by-pair', { params: { pair } });
+      setShowPairDeleteModal(false);
+      load();
+    } catch (ex) {
+      setErr(ex.response?.data?.error || 'Failed to delete trades by pair');
+    }
+  };
+
   const uniqueGrades = [...new Set(trades.map(t => t.grade).filter(g => g && g !== 'Draft'))].sort();
 
 
@@ -166,6 +189,9 @@ export default function Journal() {
             </div>
           ) : (
             <button className="btn btn-danger" onClick={deleteDrafts}>Delete Drafts</button>
+          )}
+          {mode === 'practice' && (
+            <button className="btn btn-danger" onClick={deleteByPair}>Delete By Pair</button>
           )}
           <button className="btn btn-primary" onClick={() => nav('/new-trade')}>+ New Trade</button>
         </div>
@@ -373,6 +399,48 @@ export default function Journal() {
               <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
                 <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setAddResult(null)}>Cancel</button>
                 <button className="btn btn-primary" style={{ flex: 1 }} onClick={saveResult} disabled={!addResult.result}>Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete By Pair Modal */}
+      {showPairDeleteModal && (
+        <div className="lim-ov" onClick={() => setShowPairDeleteModal(false)}>
+          <div className="lim-box" style={{ borderColor: '#fee2e2' }} onClick={e => e.stopPropagation()}>
+            <div className="lim-top" style={{ background: '#fef2f2' }}>
+              <div className="lim-title" style={{ color: '#dc2626' }}>
+                Delete By Pair
+              </div>
+            </div>
+            <div className="lim-body">
+              <div className="field">
+                <label>Pair Name</label>
+                <input
+                  type="text"
+                  className="fsel"
+                  style={{ width: '100%', padding: '10px' }}
+                  value={pairNameToDelete}
+                  onChange={e => setPairNameToDelete(e.target.value.toUpperCase())}
+                  placeholder="e.g. AUDCAD"
+                  autoFocus
+                  onKeyDown={e => e.key === 'Enter' && confirmDeleteByPair()}
+                />
+                <p style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '8px' }}>
+                  This will move all trades for this pair in Practice Mode to the bin.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setShowPairDeleteModal(false)}>Cancel</button>
+                <button 
+                  className="btn btn-danger" 
+                  style={{ flex: 1 }} 
+                  onClick={confirmDeleteByPair} 
+                  disabled={!pairNameToDelete.trim()}
+                >
+                  Delete Trades
+                </button>
               </div>
             </div>
           </div>

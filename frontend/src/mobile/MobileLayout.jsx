@@ -9,6 +9,7 @@ import { MonthlyReports, YearlyReports } from '../pages/Reports';
 import SetLimit from '../pages/SetLimit';
 import Bin from '../pages/Bin';
 import TradeBin from '../pages/TradeBin';
+import WinratePairs from '../pages/WinratePairs';
 import '../styles/mobile/mobile_fresh.css';
 
 import ModeSwitch from '../components/ModeSwitch';
@@ -50,9 +51,7 @@ export default function MobileLayout() {
           <NavLink to="/journal" className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Journal</NavLink>
           <NavLink to="/monthly" className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Monthly</NavLink>
           <NavLink to="/yearly" className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Yearly</NavLink>
-          {mode === 'justchill' && (
-            <NavLink to="/settings" className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Set Limit</NavLink>
-          )}
+          <NavLink to="/winrate-pairs" className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>WinRate by Pairs</NavLink>
           <NavLink to={mode === 'practice' ? '/trade-bin' : '/bin'} className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Bin</NavLink>
         </nav>
 
@@ -73,6 +72,7 @@ export default function MobileLayout() {
           <Route path="/settings"  element={<SetLimit/>}/>
           <Route path="/bin"       element={<Bin/>}/>
           <Route path="/trade-bin" element={<TradeBin/>}/>
+          <Route path="/winrate-pairs" element={<WinratePairs/>}/>
           <Route path="*"          element={<Navigate to="/" replace/>}/>
         </Routes>
       </main>

@@ -676,3 +676,150 @@ def export_year_pdf(year):
         as_attachment=True,
         download_name=filename,
     )
+
+
+# ── WinRate by Pairs PDF builder ──────────────────────────────────────────────
+def _build_winrate_pairs_pdf(username: str, stats: list, total_rr: float, mode: str = 'justchill') -> bytes:
+    刻 = io.BytesIO()
+    W   = A4[0] - 32 * mm
+
+    doc = SimpleDocTemplate(
+        刻, pagesize=A4,
+        leftMargin=16 * mm, rightMargin=16 * mm,
+        topMargin=16 * mm,  bottomMargin=16 * mm,
+        title=f"WinRate by Pairs Performance Report",
+        author=username,
+    )
+    story = []
+
+    story.append(_p(f"WinRate by Pairs Performance Report", S_TITLE))
+    ist = timezone(timedelta(hours=5, minutes=30))
+    now = datetime.now(ist).strftime("%d-%m-%Y %H:%M IST")
+    story.append(_p(f"@{username}  \u00b7  Mode: {mode.capitalize()}  \u00b7  Generated {now}", S_DATE))
+    story.append(Spacer(1, 4 * mm))
+    story.append(HRFlowable(width="100%", thickness=1, color=C_BORDER))
+    story.append(Spacer(1, 4 * mm))
+
+    # Summary Stat Box for Total Net RR
+    trr_color = C_WIN if total_rr >= 0 else C_LOSS
+    story.append(_p(f"Performance Summary", S_SEC))
+    story.append(Table(
+        [[_stat_box("Total Net RR (All Trades)", f"{'+' if total_rr >= 0 else ''}{total_rr:.2f}R", trr_color, W/2), ""]],
+        colWidths=[W/2, W/2],
+        style=TableStyle([("VALIGN", (0,0), (-1,-1), "TOP")])
+    ))
+    story.append(Spacer(1, 6 * mm))
+
+    if stats:
+        t_headers = ["Pair", "Win Rate %", "Total", "Wins", "Losses", "Net RR"]
+        t_col_ws  = [35 * mm, 35 * mm, 25 * mm, 25 * mm, 25 * mm, 30 * mm]
+        
+        t_rows = [[_p(h, S_HDR) for h in t_headers]]
+        for s in stats:
+            wr  = s.get("winrate", 0)
+            rr  = s.get("rr", 0.0)
+            row = [
+                _p(s.get("pair", "-"), S_CELL_B),
+                _p(f"{wr:.1f}%"),
+                _p(str(s.get("total", 0))),
+                _p(str(s.get("wins", 0))),
+                _p(str(s.get("losses", 0))),
+                _p(f"{'+' if rr >= 0 else ''}{rr:.2f}R", S_MONO),
+            ]
+            t_rows.append(row)
+            
+        ts = TableStyle([
+            ("BACKGROUND",    (0, 0),  (-1, 0),  C_DARK),
+            ("ROWBACKGROUNDS",(0, 1),  (-1, -1), [colors.white, C_CARD]),
+            ("GRID",          (0, 0),  (-1, -1), 0.3, C_BORDER),
+            ("VALIGN",        (0, 0),  (-1, -1), "MIDDLE"),
+            ("TOPPADDING",    (0, 0),  (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0),  (-1, -1), 5),
+            ("LEFTPADDING",   (0, 0),  (-1, -1), 5),
+            ("RIGHTPADDING",  (0, 0),  (-1, -1), 5),
+            ("ALIGN",         (1, 1),  (-1, -1), "CENTER"), # Center stats
+        ])
+        
+        # Colouring Win Rate and Net RR
+        for i, s in enumerate(stats, 1):
+            wr = s.get("winrate", 0)
+            rr = s.get("rr", 0)
+            if wr >= 50:
+                ts.add("TEXTCOLOR", (1, i), (1, i), C_WIN)
+            else:
+                ts.add("TEXTCOLOR", (1, i), (1, i), C_LOSS)
+            
+            if rr >= 0:
+                ts.add("TEXTCOLOR", (5, i), (5, i), C_WIN)
+            else:
+                ts.add("TEXTCOLOR", (5, i), (5, i), C_LOSS)
+
+        story.append(Table(t_rows, colWidths=t_col_ws, repeatRows=1, style=ts))
+    else:
+        story.append(_p("No performance data available yet.", S_CELL))
+
+    doc.build(story)
+    return 刻.getvalue()
+
+
+@export_bp.get("/winrate-pairs")
+@jwt_required()
+def export_winrate_pairs():
+    uid = ObjectId(get_jwt_identity())
+    db  = get_db()
+    
+    user     = db.users.find_one({"_id": uid}, {"username": 1})
+    username = user["username"] if user else "unknown"
+    mode     = get_mode()
+    
+    # Fetch trades - same logic as WinratePairs.jsx
+    filt = {
+        "user_id": uid,
+        "mode":    mode,
+        "status":  "final",
+        "result":  {"$in": ["Win", "Loss", "Breakeven"]}
+    }
+    trades = list(db.trades.find(filt))
+    
+    groups = {}
+    for t in trades:
+        pair = (t.get("pair") or "UNKNOWN").upper()
+        res  = t.get("result")
+        if not res: continue
+        
+        if pair not in groups:
+            groups[pair] = {"wins": 0, "losses": 0, "total": 0, "rr": 0.0}
+            
+        groups[pair]["total"] += 1
+        if res == "Win":
+            groups[pair]["wins"] += 1
+            groups[pair]["rr"]   += float(t.get("r_multiple") or 0)
+        elif res == "Loss":
+            groups[pair]["losses"] += 1
+            groups[pair]["rr"]     -= 1.0
+            
+    stats = []
+    for pair, g in groups.items():
+        wr = (g["wins"] / g["total"] * 100) if g["total"] > 0 else 0
+        stats.append({
+            "pair":    pair,
+            "total":   g["total"],
+            "wins":    g["wins"],
+            "losses":  g["losses"],
+            "winrate": round(wr, 1),
+            "rr":      round(g["rr"], 2)
+        })
+        
+    stats.sort(key=lambda x: x["winrate"], reverse=True)
+    
+    total_rr = sum(s["rr"] for s in stats)
+    
+    pdf_bytes = _build_winrate_pairs_pdf(username, stats, total_rr, mode)
+    filename  = f"winrate-pairs-{username}.pdf"
+    
+    return send_file(
+        io.BytesIO(pdf_bytes),
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=filename,
+    )

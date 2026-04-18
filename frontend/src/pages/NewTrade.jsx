@@ -336,10 +336,10 @@ export default function NewTrade({ editTrade, onDone }) {
       <div className="card">
         <div className="form-sec">Model</div>
         <div className="field" style={{marginBottom: '0.5rem'}}>
-          <div style={{display:'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
-            <div className="model-sel" style={{padding:0, margin: 0, gap: '4px', background: 'transparent', border:'none'}}>
+          <div style={{display:'flex', gap: '8px', alignItems: 'center', maxWidth: '100%', overflowX: 'auto', paddingBottom: '8px'}}>
+            <div className="model-sel" style={{padding:0, margin: 0, gap: '8px', background: 'transparent', border:'none', flexWrap: 'nowrap'}}>
               {modelBadges.map(m => (
-                <div key={m.name} style={{display:'flex', alignItems:'center', position:'relative', height: '34px'}}>
+                <div key={m.name} style={{display:'flex', alignItems:'center', position:'relative', height: '34px', flexShrink: 0}}>
                   <button 
                     className={`mbtn ${model === m.name ? (m.name === 'Model 1' ? 'sel-m1' : (m.name === 'Model 2' ? 'sel-m2' : '')) : ''}`}
                     style={{
@@ -348,6 +348,7 @@ export default function NewTrade({ editTrade, onDone }) {
                       fontSize: '0.85rem',
                       display: 'flex',
                       alignItems: 'center',
+                      whiteSpace: 'nowrap',
                       ...(m.name === 'Practice' && model === m.name ? {
                         backgroundColor: '#F1F5F9',
                         color: '#64748B',

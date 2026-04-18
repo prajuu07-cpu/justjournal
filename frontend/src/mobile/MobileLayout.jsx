@@ -52,6 +52,9 @@ export default function MobileLayout() {
           <NavLink to="/monthly" className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Monthly</NavLink>
           <NavLink to="/yearly" className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Yearly</NavLink>
           <NavLink to="/winrate-pairs" className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>WinRate by Pairs</NavLink>
+          {mode === 'justchill' && (
+            <NavLink to="/settings" className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Set Limit</NavLink>
+          )}
           <NavLink to={mode === 'practice' ? '/trade-bin' : '/bin'} className={({isActive})=>isActive?'m-nav-link active':'m-nav-link'} onClick={close}>Bin</NavLink>
         </nav>
 

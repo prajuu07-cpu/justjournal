@@ -38,7 +38,14 @@ export default function Bin() {
   }, [userSettings.binned_models, binnedCustom]);
 
   const handleRestore = async (m) => {
-    const ok = await restoreModel(m);
+    let ok = await restoreModel(m);
+    if (ok === 'COLLISION') {
+      if (window.confirm("Model name already exists in active models. Need to delete it and replace with this model?")) {
+        ok = await restoreModel(m, true);
+      } else {
+        return;
+      }
+    }
     if (ok) fetchBin();
   };
 

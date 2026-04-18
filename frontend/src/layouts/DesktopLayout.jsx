@@ -34,6 +34,9 @@ export default function DesktopLayout() {
           <NavLink to="/monthly"          className={({isActive})=>isActive?'nav-item active':'nav-item'}>Monthly</NavLink>
           <NavLink to="/yearly"           className={({isActive})=>isActive?'nav-item active':'nav-item'}>Yearly</NavLink>
           <NavLink to="/winrate-pairs" className={({isActive})=>isActive?'nav-item active':'nav-item'}>WinRate by Pairs</NavLink>
+          {mode === 'justchill' && (
+            <NavLink to="/settings" className={({isActive})=>isActive?'nav-item active':'nav-item'}>Set Limit</NavLink>
+          )}
           <NavLink to={mode === 'practice' ? '/trade-bin' : '/bin'} className={({isActive})=>isActive?'nav-item active':'nav-item'}>Bin</NavLink>
         </nav>
         <div className="sidebar-foot">

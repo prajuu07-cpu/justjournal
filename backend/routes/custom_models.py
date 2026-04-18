@@ -90,13 +90,15 @@ def create_custom_model():
     if not isinstance(checklist, list):
         return jsonify(error="Checklist must be a list"), 400
 
+    # Fetch user settings to check for hidden/binned models
+    settings = db.user_settings.find_one({"user_id": uid}) or {}
+    hidden_models = settings.get("hidden_models", [])
+    binned_models = settings.get("binned_models", [])
+    hidden_lower = [h.lower() for h in hidden_models]
+    binned_lower = [b.lower() for b in binned_models]
+
     # Case-insensitive uniqueness check against built-in and existing custom models
     name_lower = name.lower()
-    if model_mode == 'justchill' and name_lower in ['model 1', 'model 2']:
-        return jsonify(message="MODEL_EXISTS"), 400
-    if model_mode == 'practice' and name_lower in ['practice', 'practice model']:
-        return jsonify(message="MODEL_EXISTS"), 400
-
     # Ensure uniqueness across active (non-deleted) custom models in the same mode
     # Use $expr with $toLower for robust case-insensitive matching
     existing_model = db.custom_models.find_one({
@@ -110,7 +112,6 @@ def create_custom_model():
     
     if existing_model:
         return jsonify(message="MODEL_EXISTS", error="MODEL_EXISTS"), 400
-
     new_model = {
         "user_id": uid,
         "name": name,

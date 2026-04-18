@@ -5,7 +5,7 @@ import api from '../services/api';
 
 export default function ModelBuilder() {
   const nav = useNavigate();
-  const { addModel, mode } = useMode();
+  const { addModel, mode, refreshData } = useMode();
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [checklist, setChecklist] = useState([]);
@@ -61,6 +61,7 @@ export default function ModelBuilder() {
         createdFrom: 'practice'
       });
       addModel(data);
+      await refreshData();
       if (dupModal) setDupModal(false);
       nav('/new-trade');
     } catch (ex) {

@@ -113,9 +113,8 @@ export default function NewTrade({ editTrade, onDone }) {
 
 
   const activeItems = useMemo(() => {
-    if (model === 'Model 1') return MODEL1_ITEMS;
-    if (model === 'Model 2') return MODEL2_ITEMS;
-    const custom = customModels.find(m => m.name === model);
+    // Prefer custom model checklist if it exists (allows overriding built-in models)
+    const custom = customModels.find(m => m.name.toLowerCase() === model.toLowerCase());
     if (custom && custom.checklist) {
       return custom.checklist.map(item => {
         // Handle new object structure
@@ -137,6 +136,10 @@ export default function NewTrade({ editTrade, onDone }) {
         };
       });
     }
+
+    // Fallback to built-in items
+    if (model === 'Model 1') return MODEL1_ITEMS;
+    if (model === 'Model 2') return MODEL2_ITEMS;
     return [];
   }, [model, customModels]);
 
@@ -254,27 +257,33 @@ export default function NewTrade({ editTrade, onDone }) {
     if (model && !list.find(m => m.name === model)) {
       list.push({ name: model, isHistorical: true });
     }
-    // Filter out hidden models
+    // Filter out hidden models, but ONLY apply this to built-in models. Custom models should remain visible.
     const hidden = userSettings.hidden_models || [];
-    const filtered = list.filter(m => !hidden.includes(m.name));
-
-    // Deduplicate by name (case-insensitive)
-    const unique = [];
-    const seen = new Set();
-    filtered.forEach(m => {
-      const lowerName = m.name.toLowerCase();
-      if (!seen.has(lowerName)) {
-        unique.push(m);
-        seen.add(lowerName);
-      }
+    const filtered = list.filter(m => {
+      if (m._id || m.id || m.isHistorical) return true; // Keep custom models
+      return !hidden.includes(m.name); // Filter built-ins
     });
-    return unique;
+
+    // Deduplicate by name (case-insensitive), keeping the latest (custom overrides built-in)
+    const uniqueMap = new Map();
+    filtered.forEach(m => {
+      uniqueMap.set(m.name.toLowerCase(), m);
+    });
+    const finalArray = Array.from(uniqueMap.values());
+    
+    finalArray.sort((a, b) => {
+      if (a.name === 'Practice') return -1;
+      if (b.name === 'Practice') return 1;
+      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    });
+    
+    return finalArray;
   }, [mode, customModels, model, userSettings.hidden_models]);
 
-  // Dynamic color for "Required before Final" box
   const dynamicTheme = useMemo(() => {
     const badge = modelBadges.find(m => m.name === model);
-    if (badge?.color) {
+    const isBuiltInColor = model === 'Model 1' || model === 'Model 2';
+    if (badge?.color && !isBuiltInColor) {
       return {
         wBg: badge.color.bg,
         wBorder: badge.color.border || badge.color.text,
@@ -356,7 +365,7 @@ export default function NewTrade({ editTrade, onDone }) {
                         borderColor: '#DB2777',
                         borderWidth: '1px',
                         boxShadow: `0 4px 10px #FCE7F3`
-                      } : (m.color && model === m.name ? {
+                      } : (m.color && model === m.name && m.name !== 'Model 1' && m.name !== 'Model 2' ? {
                         backgroundColor: m.color.bg,
                         color: m.color.text,
                         borderColor: m.color.text,

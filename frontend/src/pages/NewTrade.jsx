@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useMode } from '../context/ModeContext';
@@ -248,6 +248,13 @@ export default function NewTrade({ editTrade, onDone }) {
   const [dragSrcIdx, setDragSrcIdx]       = useState(null); // index being dragged
   const [dropIdx, setDropIdx]             = useState(null); // current insertion point
 
+  // Touch drag state stored in a ref to avoid re-renders mid-gesture
+  const touchDragRef = useRef(null);
+  // Set to true when a touch *drag* happened so onClick doesn't fire
+  const touchStartedDrag = useRef(false);
+  // Refs to each badge element so we can hit-test by position
+  const badgeRefs = useRef([]);
+
   const modelBadges = useMemo(() => {
     let list = [];
     const activeCustom = customModels.filter(m => (m.mode || 'justchill') === mode);
@@ -320,6 +327,72 @@ export default function NewTrade({ editTrade, onDone }) {
     setOrderedBadges(null);
   };
 
+  // ── Touch drag handlers (mobile / tablet) ────────────────────────────────
+  const onTouchStart = useCallback((e, idx) => {
+    if (mode !== 'justchill') return;
+    touchStartedDrag.current = false;
+    touchDragRef.current = {
+      srcIdx: idx,
+      currentIdx: idx,
+      list: [...modelBadges],
+      startX: e.touches[0].clientX,
+      startY: e.touches[0].clientY,
+    };
+  }, [mode, modelBadges]);
+
+  const onTouchMove = useCallback((e) => {
+    if (!touchDragRef.current) return;
+    const td = touchDragRef.current;
+    const touch = e.touches[0];
+
+    // Only start reorder feedback after moving 6px (avoids accidental drags)
+    const dx = touch.clientX - td.startX;
+    const dy = touch.clientY - td.startY;
+    if (!td.dragging && Math.sqrt(dx * dx + dy * dy) < 6) return;
+
+    // Mark as dragging — prevents the scroll from firing AND suppresses onClick
+    td.dragging = true;
+    touchStartedDrag.current = true;
+    e.preventDefault(); // stop page scroll while dragging badges
+
+    // Initialise React state on first real move
+    if (!td.stateInit) {
+      td.stateInit = true;
+      setDragSrcIdx(td.srcIdx);
+      setOrderedBadges([...td.list]);
+    }
+
+    // Hit-test: find which badge the finger is over
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (!el) return;
+    const overEl = badgeRefs.current.findIndex(ref => ref && (ref === el || ref.contains(el)));
+    if (overEl === -1 || overEl === td.currentIdx) return;
+
+    // Live reorder
+    const next = [...td.list];
+    const [moved] = next.splice(td.currentIdx, 1);
+    next.splice(overEl, 0, moved);
+    td.list = next;
+    td.currentIdx = overEl;
+    setDragSrcIdx(overEl);
+    setOrderedBadges([...next]);
+    setDropIdx(overEl);
+  }, []);
+
+  const onTouchEnd = useCallback(async () => {
+    if (!touchDragRef.current) return;
+    const td = touchDragRef.current;
+    touchDragRef.current = null;
+
+    if (td.dragging && td.list) {
+      const newOrder = td.list.map(m => m.name);
+      await updateSettings({ ...userSettings, model_order: newOrder });
+    }
+    setDragSrcIdx(null);
+    setDropIdx(null);
+    setOrderedBadges(null);
+  }, [userSettings, updateSettings]);
+
 
   const dynamicTheme = useMemo(() => {
     const badge = modelBadges.find(m => m.name === model);
@@ -385,10 +458,14 @@ export default function NewTrade({ editTrade, onDone }) {
               {displayBadges.map((m, idx) => (
                 <div
                   key={m.name}
+                  ref={el => { badgeRefs.current[idx] = el; }}
                   draggable={mode === 'justchill'}
                   onDragStart={mode === 'justchill' ? (e) => onDragStart(e, idx) : undefined}
                   onDragOver={mode === 'justchill' ? (e) => onDragOver(e, idx) : undefined}
                   onDragEnd={mode === 'justchill' ? onDragEnd : undefined}
+                  onTouchStart={mode === 'justchill' ? (e) => onTouchStart(e, idx) : undefined}
+                  onTouchMove={mode === 'justchill' ? onTouchMove : undefined}
+                  onTouchEnd={mode === 'justchill' ? onTouchEnd : undefined}
                   style={{
                     display:'flex', alignItems:'center', position:'relative',
                     height: '34px', flexShrink: 0,
@@ -396,6 +473,7 @@ export default function NewTrade({ editTrade, onDone }) {
                     opacity: dragSrcIdx === idx ? 0.35 : 1,
                     cursor: mode === 'justchill' ? 'grab' : 'pointer',
                     transform: dragSrcIdx === idx ? 'scale(0.95)' : 'scale(1)',
+                    touchAction: mode === 'justchill' ? 'none' : 'auto',
                   }}
                 >
                   <button
@@ -434,7 +512,8 @@ export default function NewTrade({ editTrade, onDone }) {
                       } : {}))
                     }}
                     onClick={() => {
-                      if (dragSrcIdx !== null) return; // ignore clicks during drag
+                      if (dragSrcIdx !== null) return; // ignore clicks during mouse drag
+                      if (touchStartedDrag.current) { touchStartedDrag.current = false; return; } // ignore clicks after touch drag
                       setModel(m.name);
                       if (m.notes && !notes) setNotes(m.notes);
                     }}

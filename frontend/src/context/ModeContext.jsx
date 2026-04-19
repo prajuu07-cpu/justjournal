@@ -17,7 +17,8 @@ export const ModeProvider = ({ children }) => {
     monthly_loss_limit: 5, 
     hidden_models: [], 
     binned_models: [], 
-    archived_models: [] 
+    archived_models: [],
+    model_order: []
   });
 
   useEffect(() => {
@@ -44,6 +45,31 @@ export const ModeProvider = ({ children }) => {
 
   useEffect(() => {
     refreshData();
+  }, []);
+
+  // ── Auto-update: poll /health every 5 min, reload if version changed ────────
+  useEffect(() => {
+    let knownVersion = null;
+
+    const checkVersion = async () => {
+      try {
+        const res = await fetch('/api/health', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.version) return;
+        if (knownVersion === null) {
+          knownVersion = data.version;          // store on first check
+        } else if (knownVersion !== data.version) {
+          window.location.reload(true);          // new deploy → hard reload
+        }
+      } catch (_) {
+        // network unavailable — skip silently
+      }
+    };
+
+    checkVersion();                             // immediate check on mount
+    const id = setInterval(checkVersion, 5 * 60 * 1000); // then every 5 min
+    return () => clearInterval(id);
   }, []);
 
   const switchMode = (newMode) => {

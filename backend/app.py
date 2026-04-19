@@ -55,9 +55,11 @@ app.register_blueprint(export_bp,  url_prefix="/api/export")
 app.register_blueprint(custom_models_bp, url_prefix="/api/custom-models")
 app.register_blueprint(settings_bp,      url_prefix="/api/settings")
 
+BUILD_VERSION = "2026.04.19.01"   # ← bump this string on every deploy
+
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "version": BUILD_VERSION}
 
 @app.after_request
 def add_header(response):

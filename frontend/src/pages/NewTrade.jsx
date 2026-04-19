@@ -243,42 +243,83 @@ export default function NewTrade({ editTrade, onDone }) {
     }
   };
 
+  // ── Drag-and-drop reorder state (JustChill only) ────────────────────────
+  const [orderedBadges, setOrderedBadges] = useState(null); // live order while dragging
+  const [dragSrcIdx, setDragSrcIdx]       = useState(null); // index being dragged
+  const [dropIdx, setDropIdx]             = useState(null); // current insertion point
+
   const modelBadges = useMemo(() => {
     let list = [];
     const activeCustom = customModels.filter(m => (m.mode || 'justchill') === mode);
-    
     if (mode === 'practice') {
-      list = [{name: 'Practice'}, ...activeCustom];
+      list = [{ name: 'Practice' }, ...activeCustom];
     } else {
-      list = [{name: 'Model 1'}, {name: 'Model 2'}, ...activeCustom];
+      list = [{ name: 'Model 1' }, { name: 'Model 2' }, ...activeCustom];
     }
-    
-    // Add current model if it's missing (deleted/historical)
     if (model && !list.find(m => m.name === model)) {
       list.push({ name: model, isHistorical: true });
     }
-    // Filter out hidden models, but ONLY apply this to built-in models. Custom models should remain visible.
     const hidden = userSettings.hidden_models || [];
     const filtered = list.filter(m => {
-      if (m._id || m.id || m.isHistorical) return true; // Keep custom models
-      return !hidden.includes(m.name); // Filter built-ins
+      if (m._id || m.id || m.isHistorical) return true;
+      return !hidden.includes(m.name);
     });
-
-    // Deduplicate by name (case-insensitive), keeping the latest (custom overrides built-in)
     const uniqueMap = new Map();
-    filtered.forEach(m => {
-      uniqueMap.set(m.name.toLowerCase(), m);
-    });
-    const finalArray = Array.from(uniqueMap.values());
-    
-    finalArray.sort((a, b) => {
+    filtered.forEach(m => uniqueMap.set(m.name.toLowerCase(), m));
+    const base = Array.from(uniqueMap.values());
+
+    // Apply saved order
+    const order = userSettings.model_order || [];
+    base.sort((a, b) => {
+      const ai = order.indexOf(a.name), bi = order.indexOf(b.name);
+      if (ai !== -1 && bi !== -1) return ai - bi;
+      if (ai !== -1) return -1;
+      if (bi !== -1) return 1;
       if (a.name === 'Practice') return -1;
       if (b.name === 'Practice') return 1;
       return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
     });
-    
-    return finalArray;
-  }, [mode, customModels, model, userSettings.hidden_models]);
+    return base;
+  }, [mode, customModels, model, userSettings.hidden_models, userSettings.model_order]);
+
+  // The rendered list — uses live drag order when dragging, otherwise modelBadges
+  const displayBadges = orderedBadges || modelBadges;
+
+  const onDragStart = (e, idx) => {
+    setDragSrcIdx(idx);
+    setOrderedBadges([...modelBadges]);
+    e.dataTransfer.effectAllowed = 'move';
+    // transparent drag image so only CSS opacity gives feedback
+    const blank = document.createElement('div');
+    blank.style.cssText = 'width:1px;height:1px;opacity:0;position:fixed;top:-999px';
+    document.body.appendChild(blank);
+    e.dataTransfer.setDragImage(blank, 0, 0);
+    setTimeout(() => document.body.removeChild(blank), 0);
+  };
+
+  const onDragOver = (e, overIdx) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragSrcIdx === null || overIdx === dragSrcIdx) return;
+    // Reorder live
+    const next = [...orderedBadges];
+    const [item] = next.splice(dragSrcIdx, 1);
+    next.splice(overIdx, 0, item);
+    setDragSrcIdx(overIdx);
+    setOrderedBadges(next);
+    setDropIdx(overIdx);
+  };
+
+  const onDragEnd = async () => {
+    if (orderedBadges) {
+      const newOrder = orderedBadges.map(m => m.name);
+      await updateSettings({ ...userSettings, model_order: newOrder });
+    }
+    setDragSrcIdx(null);
+    setDropIdx(null);
+    setOrderedBadges(null);
+  };
+
 
   const dynamicTheme = useMemo(() => {
     const badge = modelBadges.find(m => m.name === model);
@@ -337,18 +378,36 @@ export default function NewTrade({ editTrade, onDone }) {
         <div className="form-sec">Model</div>
         <div className="field" style={{marginBottom: '0.5rem'}}>
           <div style={{display:'flex', gap: '8px', alignItems: 'center', maxWidth: '100%', overflowX: 'auto', paddingBottom: '8px'}}>
-            <div className="model-sel" style={{padding:0, margin: 0, gap: '8px', background: 'transparent', border:'none', flexWrap: 'nowrap'}}>
-              {modelBadges.map(m => (
-                <div key={m.name} style={{display:'flex', alignItems:'center', position:'relative', height: '34px', flexShrink: 0}}>
-                  <button 
+            <div
+              className="model-sel"
+              style={{padding:0, margin: 0, gap: '8px', background: 'transparent', border:'none', flexWrap: 'nowrap'}}
+            >
+              {displayBadges.map((m, idx) => (
+                <div
+                  key={m.name}
+                  draggable={mode === 'justchill'}
+                  onDragStart={mode === 'justchill' ? (e) => onDragStart(e, idx) : undefined}
+                  onDragOver={mode === 'justchill' ? (e) => onDragOver(e, idx) : undefined}
+                  onDragEnd={mode === 'justchill' ? onDragEnd : undefined}
+                  style={{
+                    display:'flex', alignItems:'center', position:'relative',
+                    height: '34px', flexShrink: 0,
+                    transition: 'opacity 0.15s, transform 0.2s',
+                    opacity: dragSrcIdx === idx ? 0.35 : 1,
+                    cursor: mode === 'justchill' ? 'grab' : 'pointer',
+                    transform: dragSrcIdx === idx ? 'scale(0.95)' : 'scale(1)',
+                  }}
+                >
+                  <button
                     className={`mbtn ${model === m.name ? (m.name === 'Model 1' ? 'sel-m1' : (m.name === 'Model 2' ? 'sel-m2' : '')) : ''}`}
                     style={{
                       height: '34px',
-                      padding: '0 12px', 
+                      padding: '0 12px',
                       fontSize: '0.85rem',
                       display: 'flex',
                       alignItems: 'center',
                       whiteSpace: 'nowrap',
+                      pointerEvents: dragSrcIdx !== null ? 'none' : 'auto',
                       ...(m.name === 'Practice' && model === m.name ? {
                         backgroundColor: '#F1F5F9',
                         color: '#64748B',
@@ -375,6 +434,7 @@ export default function NewTrade({ editTrade, onDone }) {
                       } : {}))
                     }}
                     onClick={() => {
+                      if (dragSrcIdx !== null) return; // ignore clicks during drag
                       setModel(m.name);
                       if (m.notes && !notes) setNotes(m.notes);
                     }}

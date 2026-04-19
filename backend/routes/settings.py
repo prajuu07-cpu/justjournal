@@ -20,7 +20,8 @@ def get_settings():
         "monthly_loss_limit": settings.get("monthly_loss_limit", 5),
         "hidden_models": settings.get("hidden_models", []),
         "binned_models": settings.get("binned_models", []),
-        "archived_models": settings.get("archived_models", [])
+        "archived_models": settings.get("archived_models", []),
+        "model_order": settings.get("model_order", [])
     })
 
 @settings_bp.route('', methods=['POST'])
@@ -54,7 +55,8 @@ def update_settings():
             "monthly_loss_limit": monthly_loss_limit,
             "hidden_models": data.get("hidden_models", []),
             "binned_models": data.get("binned_models", []),
-            "archived_models": data.get("archived_models", [])
+            "archived_models": data.get("archived_models", []),
+            "model_order": data.get("model_order", [])
         }},
         upsert=True
     )
@@ -66,6 +68,7 @@ def update_settings():
             "monthly_loss_limit": monthly_loss_limit,
             "hidden_models": data.get("hidden_models", []),
             "binned_models": data.get("binned_models", []),
-            "archived_models": data.get("archived_models", [])
+            "archived_models": data.get("archived_models", []),
+            "model_order": data.get("model_order", [])
         }
     })

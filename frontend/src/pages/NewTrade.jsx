@@ -254,8 +254,6 @@ export default function NewTrade({ editTrade, onDone }) {
   const touchStartedDrag = useRef(false);
   // Refs to each badge element so we can hit-test by position
   const badgeRefs = useRef([]);
-  // Which badge index is currently being long-pressed (for visual feedback)
-  const [longPressIdx, setLongPressIdx] = useState(null);
 
   const modelBadges = useMemo(() => {
     let list = [];
@@ -329,38 +327,16 @@ export default function NewTrade({ editTrade, onDone }) {
     setOrderedBadges(null);
   };
 
-  // ── Touch drag handlers — long-press to activate, then slide (mobile/tablet)
-  const LONG_PRESS_MS = 300; // ms hold before drag unlocks
-
+  // ── Touch drag handlers (mobile / tablet) ────────────────────────────────
   const onTouchStart = useCallback((e, idx) => {
     if (mode !== 'justchill') return;
     touchStartedDrag.current = false;
-
-    const startX = e.touches[0].clientX;
-    const startY = e.touches[0].clientY;
-
-    // Start the long-press timer
-    const timer = setTimeout(() => {
-      // Only activate if finger hasn't moved more than 8px
-      const td = touchDragRef.current;
-      if (!td || td.cancelled) return;
-      // Vibrate briefly as haptic confirmation (supported on Android)
-      if (navigator.vibrate) navigator.vibrate(40);
-      td.active = true; // drag is now unlocked
-      setLongPressIdx(idx);
-      setDragSrcIdx(idx);
-      setOrderedBadges([...td.list]);
-    }, LONG_PRESS_MS);
-
     touchDragRef.current = {
       srcIdx: idx,
       currentIdx: idx,
       list: [...modelBadges],
-      startX,
-      startY,
-      timer,
-      active: false,   // true only after long-press threshold
-      cancelled: false,
+      startX: e.touches[0].clientX,
+      startY: e.touches[0].clientY,
     };
   }, [mode, modelBadges]);
 
@@ -368,23 +344,25 @@ export default function NewTrade({ editTrade, onDone }) {
     if (!touchDragRef.current) return;
     const td = touchDragRef.current;
     const touch = e.touches[0];
+
+    // Only start reorder feedback after moving 6px (avoids accidental drags)
     const dx = touch.clientX - td.startX;
     const dy = touch.clientY - td.startY;
+    if (!td.dragging && Math.sqrt(dx * dx + dy * dy) < 6) return;
 
-    // If long-press hasn't fired yet and the finger moved too far, cancel it
-    if (!td.active) {
-      if (Math.sqrt(dx * dx + dy * dy) > 8) {
-        clearTimeout(td.timer);
-        td.cancelled = true;
-      }
-      return; // don't reorder until long-press unlocks drag
+    // Mark as dragging — prevents the scroll from firing AND suppresses onClick
+    td.dragging = true;
+    touchStartedDrag.current = true;
+    e.preventDefault(); // stop page scroll while dragging badges
+
+    // Initialise React state on first real move
+    if (!td.stateInit) {
+      td.stateInit = true;
+      setDragSrcIdx(td.srcIdx);
+      setOrderedBadges([...td.list]);
     }
 
-    // Long-press is active — prevent page scroll and reorder
-    touchStartedDrag.current = true;
-    e.preventDefault();
-
-    // Hit-test: which badge is the finger over?
+    // Hit-test: find which badge the finger is over
     const el = document.elementFromPoint(touch.clientX, touch.clientY);
     if (!el) return;
     const overEl = badgeRefs.current.findIndex(ref => ref && (ref === el || ref.contains(el)));
@@ -397,7 +375,6 @@ export default function NewTrade({ editTrade, onDone }) {
     td.list = next;
     td.currentIdx = overEl;
     setDragSrcIdx(overEl);
-    setLongPressIdx(overEl);
     setOrderedBadges([...next]);
     setDropIdx(overEl);
   }, []);
@@ -405,11 +382,9 @@ export default function NewTrade({ editTrade, onDone }) {
   const onTouchEnd = useCallback(async () => {
     if (!touchDragRef.current) return;
     const td = touchDragRef.current;
-    clearTimeout(td.timer); // always cancel the timer
     touchDragRef.current = null;
-    setLongPressIdx(null);
 
-    if (td.active && td.list) {
+    if (td.dragging && td.list) {
       const newOrder = td.list.map(m => m.name);
       await updateSettings({ ...userSettings, model_order: newOrder });
     }
@@ -494,18 +469,10 @@ export default function NewTrade({ editTrade, onDone }) {
                   style={{
                     display:'flex', alignItems:'center', position:'relative',
                     height: '34px', flexShrink: 0,
-                    transition: 'opacity 0.15s, transform 0.2s, box-shadow 0.15s',
+                    transition: 'opacity 0.15s, transform 0.2s',
                     opacity: dragSrcIdx === idx ? 0.35 : 1,
-                    cursor: mode === 'justchill' ? (longPressIdx === idx ? 'grabbing' : 'grab') : 'pointer',
-                    transform: longPressIdx === idx && dragSrcIdx === null
-                      ? 'scale(1.12)'          // swell during hold
-                      : dragSrcIdx === idx
-                        ? 'scale(0.95)'        // shrink while dragging
-                        : 'scale(1)',
-                    borderRadius: '10px',
-                    boxShadow: longPressIdx === idx && dragSrcIdx === null
-                      ? '0 0 0 3px #6366f188'  // purple ring while holding
-                      : 'none',
+                    cursor: mode === 'justchill' ? 'grab' : 'pointer',
+                    transform: dragSrcIdx === idx ? 'scale(0.95)' : 'scale(1)',
                     touchAction: mode === 'justchill' ? 'none' : 'auto',
                   }}
                 >

@@ -238,34 +238,45 @@ def create_trade():
     if mode == "justchill":
         settings = db.user_settings.find_one({"user_id": uid}) or {}
         w_limit = settings.get("weekly_limit", 2)
+        wl_limit = settings.get("weekly_loss_limit", 2)
         m_limit = settings.get("monthly_loss_limit", 5)
 
-        # Weekly limit (Siloed by mode)
+        # Weekly trade limit
         start, end = _week_bounds(d)
         w_filt = {
             "user_id": uid,
             "status":  "final",
             "date":    {"$gte": start, "$lte": end},
+            "mode":    mode
         }
-        w_filt["mode"] = mode
-
         wcount = db.trades.count_documents(w_filt)
         if wcount >= w_limit:
-            return jsonify(limitType="weekly", error=f"Weekly limit reached ({w_limit} final trades)."), 422
+            return jsonify(limitType="weekly", error="Weekly trade limit reached. You cannot add more trades this week."), 422
 
-        # Monthly loss limit (Siloed by mode)
+        # Weekly loss limit
+        wl_filt = {
+            "user_id": uid,
+            "status":  "final",
+            "result":  "Loss",
+            "date":    {"$gte": start, "$lte": end},
+            "mode":    mode
+        }
+        wlcount = db.trades.count_documents(wl_filt)
+        if wlcount >= wl_limit:
+            return jsonify(limitType="weeklyLoss", error="Weekly loss limit reached. No more trades allowed this week."), 422
+
+        # Monthly loss limit
         ym = trade_date[:7]
         l_filt = {
             "user_id": uid,
             "status":  "final",
             "result":  "Loss",
             "date":    {"$regex": f"^{ym}"},
+            "mode":    mode
         }
-        l_filt["mode"] = mode
-
         lcount = db.trades.count_documents(l_filt)
         if lcount >= m_limit:
-            return jsonify(limitType="monthly", error=f"Monthly loss limit reached ({m_limit} losses)."), 422
+            return jsonify(limitType="monthly", error="Monthly loss limit reached. No more losing trades allowed this month."), 422
 
     now = _now_iso()
     doc = {
@@ -366,23 +377,36 @@ def update_trade(trade_id):
     if mode == "justchill":
         settings = db.user_settings.find_one({"user_id": uid}) or {}
         w_limit = settings.get("weekly_limit", 2)
+        wl_limit = settings.get("weekly_loss_limit", 2)
         m_limit = settings.get("monthly_loss_limit", 5)
 
-        # Weekly limit (exclude self, Siloed by mode)
+        # Weekly trade limit
         start, end = _week_bounds(d)
         w_filt = {
             "user_id": uid,
             "status":  "final",
             "date":    {"$gte": start, "$lte": end},
             "_id":     {"$ne": oid},
+            "mode":    mode
         }
-        w_filt["mode"] = mode
-
         wcount = db.trades.count_documents(w_filt)
         if wcount >= w_limit:
-            return jsonify(limitType="weekly", error="Weekly limit reached."), 422
+            return jsonify(limitType="weekly", error="Weekly trade limit reached. You cannot add more trades this week."), 422
 
-        # Monthly loss limit (Siloed by mode)
+        # Weekly loss limit
+        wl_filt = {
+            "user_id": uid,
+            "status":  "final",
+            "result":  "Loss",
+            "date":    {"$gte": start, "$lte": end},
+            "_id":     {"$ne": oid},
+            "mode":    mode
+        }
+        wlcount = db.trades.count_documents(wl_filt)
+        if wlcount >= wl_limit:
+            return jsonify(limitType="weeklyLoss", error="Weekly loss limit reached. No more trades allowed this week."), 422
+
+        # Monthly loss limit
         ym = trade_date[:7]
         l_filt = {
             "user_id": uid,
@@ -390,12 +414,11 @@ def update_trade(trade_id):
             "result":  "Loss",
             "date":    {"$regex": f"^{ym}"},
             "_id":     {"$ne": oid},
+            "mode":    mode
         }
-        l_filt["mode"] = mode
-
         lcount = db.trades.count_documents(l_filt)
         if lcount >= m_limit:
-            return jsonify(limitType="monthly", error="Monthly loss limit reached."), 422
+            return jsonify(limitType="monthly", error="Monthly loss limit reached. No more losing trades allowed this month."), 422
 
     db.trades.update_one({"_id": oid, "user_id": uid, "mode": get_mode()}, {"$set": {
         "pair":           pair,
@@ -455,6 +478,50 @@ def add_result(trade_id):
     else: # Win
         pnl = _calc_pnl(existing.get("risk_percent", 1.0), r_multiple)
 
+    mode = get_mode()
+    if mode == "justchill":
+        settings = db.user_settings.find_one({"user_id": uid}) or {}
+        w_limit = settings.get("weekly_limit", 2)
+        wl_limit = settings.get("weekly_loss_limit", 2)
+        m_limit = settings.get("monthly_loss_limit", 5)
+
+        trade_date = existing.get("date", "")
+        try:
+            d = datetime.strptime(trade_date, "%Y-%m-%d").date()
+        except ValueError:
+            d = date.today()
+
+        start, end = _week_bounds(d)
+
+        # Weekly loss limit
+        wl_filt = {
+            "user_id": uid,
+            "status":  "final",
+            "result":  "Loss",
+            "date":    {"$gte": start, "$lte": end},
+            "_id":     {"$ne": oid},
+            "mode":    mode
+        }
+        wlcount = db.trades.count_documents(wl_filt)
+        if wlcount >= wl_limit:
+            return jsonify(limitType="weeklyLoss", error="Weekly loss limit reached. No more trades allowed this week."), 422
+
+        # Monthly loss limit
+        ym = trade_date[:7]
+        l_filt = {
+            "user_id": uid,
+            "status":  "final",
+            "result":  "Loss",
+            "date":    {"$regex": f"^{ym}"},
+            "_id":     {"$ne": oid},
+            "mode":    mode
+        }
+        lcount = db.trades.count_documents(l_filt)
+        if lcount >= m_limit:
+            return jsonify(limitType="monthly", error="Monthly loss limit reached. No more losing trades allowed this month."), 422
+
+
+
     db.trades.update_one({"_id": oid, "user_id": uid, "mode": get_mode()}, {"$set": {
         "result":         result,
         "r_multiple":     r_multiple,
@@ -507,6 +574,7 @@ def get_limit_status():
 
     settings = db.user_settings.find_one({"user_id": uid}) or {}
     w_limit = settings.get("weekly_limit", 2)
+    wl_limit = settings.get("weekly_loss_limit", 2)
     m_limit = settings.get("monthly_loss_limit", 5)
 
     today = date.today()
@@ -521,6 +589,16 @@ def get_limit_status():
     }
     wcount = db.trades.count_documents(w_filt)
 
+    # Weekly losses
+    wl_filt = {
+        "user_id": uid,
+        "status":  "final",
+        "mode":    mode,
+        "result":  "Loss",
+        "date":    {"$gte": start, "$lte": end},
+    }
+    wlcount = db.trades.count_documents(wl_filt)
+
     # Monthly losses
     ym = today.strftime("%Y-%m")
     l_filt = {
@@ -534,9 +612,12 @@ def get_limit_status():
 
     return jsonify(
         weekly_reached=wcount >= w_limit,
+        weeklyLoss_reached=wlcount >= wl_limit,
         monthly_reached=lcount >= m_limit,
         weekly_count=wcount,
         weekly_limit=w_limit,
+        weekly_loss_count=wlcount,
+        weekly_loss_limit=wl_limit,
         monthly_count=lcount,
         monthly_limit=m_limit
     )

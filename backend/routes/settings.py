@@ -17,6 +17,7 @@ def get_settings():
         
     return jsonify({
         "weekly_limit": settings.get("weekly_limit", 2),
+        "weekly_loss_limit": settings.get("weekly_loss_limit", 2),
         "monthly_loss_limit": settings.get("monthly_loss_limit", 5),
         "hidden_models": settings.get("hidden_models", []),
         "binned_models": settings.get("binned_models", []),
@@ -32,6 +33,7 @@ def update_settings():
     data = request.get_json()
     
     weekly_limit = data.get("weekly_limit")
+    weekly_loss_limit = data.get("weekly_loss_limit")
     monthly_loss_limit = data.get("monthly_loss_limit")
     
     # Use existing settings if fields are missing
@@ -39,11 +41,14 @@ def update_settings():
     
     if weekly_limit is None:
         weekly_limit = existing.get("weekly_limit", 2)
+    if weekly_loss_limit is None:
+        weekly_loss_limit = existing.get("weekly_loss_limit", 2)
     if monthly_loss_limit is None:
         monthly_loss_limit = existing.get("monthly_loss_limit", 5)
         
     try:
         weekly_limit = int(weekly_limit)
+        weekly_loss_limit = int(weekly_loss_limit)
         monthly_loss_limit = int(monthly_loss_limit)
     except (ValueError, TypeError):
         return jsonify(error="Limits must be integers"), 400
@@ -52,6 +57,7 @@ def update_settings():
         {"user_id": uid},
         {"$set": {
             "weekly_limit": weekly_limit,
+            "weekly_loss_limit": weekly_loss_limit,
             "monthly_loss_limit": monthly_loss_limit,
             "hidden_models": data.get("hidden_models", []),
             "binned_models": data.get("binned_models", []),
@@ -65,6 +71,7 @@ def update_settings():
         "message": "Settings updated successfully",
         "settings": {
             "weekly_limit": weekly_limit,
+            "weekly_loss_limit": weekly_loss_limit,
             "monthly_loss_limit": monthly_loss_limit,
             "hidden_models": data.get("hidden_models", []),
             "binned_models": data.get("binned_models", []),

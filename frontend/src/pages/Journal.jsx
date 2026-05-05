@@ -15,6 +15,7 @@ export default function Journal() {
   const [filter,    setFilter]    = useState({ model: 'All', grade: 'All', result: 'All', status: 'All' });
   const [addResult, setAddResult] = useState(null); // { trade, result:'', rMult:'' }
   const [err,       setErr]       = useState('');
+  const [limitModal, setLimitModal] = useState('');
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [showPairDeleteModal, setShowPairDeleteModal] = useState(false);
   const [pairNameToDelete, setPairNameToDelete] = useState('');
@@ -87,7 +88,13 @@ export default function Journal() {
       setAddResult(null);
       load();
     } catch (ex) {
-      setErr(ex.response?.data?.error || 'Failed to save result');
+      const lt = ex.response?.data?.limitType;
+      if (lt) {
+        setAddResult(null);
+        setLimitModal(lt);
+      } else {
+        setErr(ex.response?.data?.error || 'Failed to save result');
+      }
     }
   };
 
@@ -130,6 +137,33 @@ export default function Journal() {
 
   return (
     <div className="page">
+      {limitModal && (
+        <div className="lim-ov" onClick={()=>setLimitModal('')}>
+          <div className="lim-box" onClick={e=>e.stopPropagation()}>
+            <div className="lim-top">
+              <div className="lim-title">
+                {limitModal === 'weekly' ? 'Weekly Limit Reached' : 
+                 limitModal === 'weeklyLoss' ? 'Weekly Loss Limit Reached' : 
+                 'Monthly Loss Limit Reached'}
+              </div>
+            </div>
+            <div className="lim-body">
+              <div className="lim-msg">
+                {limitModal === 'weekly' 
+                  ? `You have reached ${userSettings.weekly_limit} trades this week. No more trades until next week.`
+                  : limitModal === 'weeklyLoss'
+                    ? `You have reached ${userSettings.weekly_loss_limit} losing trades this week. No more trades allowed this week.`
+                  : limitModal === 'monthly' 
+                    ? `You have reached ${userSettings.monthly_loss_limit} losing trades this month. Trading is blocked until next month.`
+                    : ''
+                }
+              </div>
+              <button className="lim-dismiss" onClick={()=>setLimitModal('')}>Got it</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="page-hd">
         <h1>Trade Journal</h1>
         <div className="header-btns">

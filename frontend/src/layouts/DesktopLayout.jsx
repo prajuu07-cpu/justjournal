@@ -9,6 +9,7 @@ import SetLimit from '../pages/SetLimit';
 import Bin from '../pages/Bin';
 import TradeBin from '../pages/TradeBin';
 import WinratePairs from '../pages/WinratePairs';
+import ChangePassword from '../pages/ChangePassword';
 import '../styles/desktop.css';
 
 import ModeSwitch from '../components/ModeSwitch';
@@ -38,6 +39,7 @@ export default function DesktopLayout() {
             <NavLink to="/settings" className={({isActive})=>isActive?'nav-item active':'nav-item'}>Set Limit</NavLink>
           )}
           <NavLink to={mode === 'practice' ? '/trade-bin' : '/bin'} className={({isActive})=>isActive?'nav-item active':'nav-item'}>Bin</NavLink>
+          <NavLink to="/change-password" className={({isActive})=>isActive?'nav-item active':'nav-item'}>Change Password</NavLink>
         </nav>
         <div className="sidebar-foot">
           <div className="user-info">@{user?.username}</div>
@@ -57,6 +59,7 @@ export default function DesktopLayout() {
           <Route path="/bin"       element={<Bin/>}/>
           <Route path="/trade-bin" element={<TradeBin/>}/>
           <Route path="/winrate-pairs" element={<WinratePairs/>}/>
+          <Route path="/change-password" element={<ChangePassword/>}/>
           <Route path="*"          element={<Navigate to="/" replace/>}/>
         </Routes>
       </main>

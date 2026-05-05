@@ -24,12 +24,15 @@ def _user_out(doc):
 @auth_bp.post("/register")
 def register():
     data     = request.get_json(silent=True) or {}
-    email    = (data.get("email")    or "").strip().lower()
-    username = (data.get("username") or "").strip().lower()
-    password =  data.get("password") or ""
+    email            = (data.get("email")            or "").strip().lower()
+    username         = (data.get("username")         or "").strip().lower()
+    password         =  data.get("password")         or ""
+    confirm_password =  data.get("confirm_password") or ""
 
     if not email or not username or not password:
         return jsonify(error="email, username and password are required"), 400
+    if password != confirm_password:
+        return jsonify(error="Passwords do not match"), 400
     if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
         return jsonify(error="Invalid email address"), 400
     if not re.match(r"^\w{3,30}$", username):
@@ -96,3 +99,39 @@ def me():
     if not doc:
         return jsonify(error="User not found"), 404
     return jsonify(user=_user_out(doc))
+
+@auth_bp.put("/change-password")
+@jwt_required()
+def change_password():
+    data = request.get_json(silent=True) or {}
+    current_password = data.get("currentPassword") or ""
+    new_password = data.get("newPassword") or ""
+    confirm_password = data.get("confirmPassword") or ""
+
+    if not current_password or not new_password or not confirm_password:
+        return jsonify(error="Please fill all required fields correctly."), 400
+
+    if new_password != confirm_password:
+        return jsonify(error="New password and confirm password do not match."), 400
+
+    if not re.match(r"^[a-zA-Z0-9]+$", new_password):
+        return jsonify(error="Password must contain only letters and numbers."), 400
+
+    if len(new_password) < 6:
+        return jsonify(error="Password must be at least 6 characters."), 400
+
+    uid = ObjectId(get_jwt_identity())
+    db  = get_db()
+    doc = db.users.find_one({"_id": uid})
+    if not doc:
+        return jsonify(error="User not found"), 404
+
+    if not check_password_hash(doc["password_hash"], current_password):
+        return jsonify(error="Current password is incorrect."), 400
+
+    db.users.update_one(
+        {"_id": uid},
+        {"$set": {"password_hash": generate_password_hash(new_password, method="pbkdf2:sha256", salt_length=16)}}
+    )
+
+    return jsonify(message="Password updated successfully. Please use your new password for future logins."), 200

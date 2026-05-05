@@ -7,27 +7,44 @@ export default function SetLimit() {
   const nav = useNavigate();
   
   const [weekly, setWeekly] = useState(userSettings.weekly_limit || 2);
+  const [weeklyLoss, setWeeklyLoss] = useState(userSettings.weekly_loss_limit || 2);
   const [monthly, setMonthly] = useState(userSettings.monthly_loss_limit || 5);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    setWeekly(userSettings.weekly_limit);
-    setMonthly(userSettings.monthly_loss_limit);
+    setWeekly(userSettings.weekly_limit ?? 2);
+    setWeeklyLoss(userSettings.weekly_loss_limit ?? 2);
+    setMonthly(userSettings.monthly_loss_limit ?? 5);
   }, [userSettings]);
 
+  const isValidPositiveInteger = (val) => {
+    const num = Number(val);
+    return Number.isInteger(num) && num > 0;
+  };
+
   const save = async () => {
-    setBusy(true);
+    setError('');
     setMsg('');
+
+    if (!isValidPositiveInteger(weekly) || !isValidPositiveInteger(weeklyLoss) || !isValidPositiveInteger(monthly)) {
+      setError('Please enter a valid positive number.');
+      return;
+    }
+
+    setBusy(true);
     const success = await updateSettings({
-      weekly_limit: parseInt(weekly),
-      monthly_loss_limit: parseInt(monthly)
+      weekly_limit: parseInt(weekly, 10),
+      weekly_loss_limit: parseInt(weeklyLoss, 10),
+      monthly_loss_limit: parseInt(monthly, 10)
     });
+    
     if (success) {
-      setMsg('Limits saved successfully!');
+      setMsg('Trading limits updated successfully.');
       setTimeout(() => setMsg(''), 3000);
     } else {
-      setMsg('Failed to save limits.');
+      setError('Failed to save limits.');
     }
     setBusy(false);
   };
@@ -37,7 +54,7 @@ export default function SetLimit() {
       <div className="page" style={{textAlign:'center', padding:'40px'}}>
         <div className="card">
           <h2>Limits Not Available</h2>
-          <p style={{color:'#64748b'}}>Manual limits are only available in JustChill mode.</p>
+          <p style={{color:'#64748b'}}>Manual limits are only available in Journal mode.</p>
           <button className="btn btn-ghost" onClick={() => nav('/')} style={{marginTop:20}}>Back to Dashboard</button>
         </div>
       </div>
@@ -54,8 +71,8 @@ export default function SetLimit() {
       {msg && (
         <div style={{
           padding: '12px', 
-          background: msg.includes('Failed') ? '#fef2f2' : '#f0fdf4', 
-          color: msg.includes('Failed') ? '#991b1b' : '#166534',
+          background: '#f0fdf4', 
+          color: '#166534',
           borderRadius: 8,
           marginBottom: 16,
           fontWeight: 600,
@@ -65,26 +82,57 @@ export default function SetLimit() {
         </div>
       )}
 
+      {error && (
+        <div style={{
+          padding: '12px', 
+          background: '#fef2f2', 
+          color: '#991b1b',
+          borderRadius: 8,
+          marginBottom: 16,
+          fontWeight: 600,
+          textAlign: 'center'
+        }}>
+          {error}
+        </div>
+      )}
+
       <div className="card">
         <div className="form-sec">Control Discipline</div>
         <p style={{fontSize:'0.9rem', color:'#64748b', marginBottom: '1.5rem'}}>
-          Define your tolerance levels. The system will block new final trades in JustChill mode once these limits are reached.
+          Define your tolerance levels. The system will block new final trades in Journal mode once these limits are reached.
         </p>
 
-        <div className="g2">
+        <div className="g2" style={{ marginBottom: '16px' }}>
           <div className="field">
-            <label>Weekly Final Trade Limit</label>
+            <label>Weekly Trade Limit</label>
             <input 
               type="number" 
               value={weekly} 
               onChange={e => setWeekly(e.target.value)}
               placeholder="e.g. 2"
+              min="1"
             />
             <small style={{display:'block', marginTop:4, color:'#94a3b8'}}>
-              Maximum number of completed trades per week.
+              Max number of trades allowed per week
             </small>
           </div>
 
+          <div className="field">
+            <label>Weekly Loss Limit</label>
+            <input 
+              type="number" 
+              value={weeklyLoss} 
+              onChange={e => setWeeklyLoss(e.target.value)}
+              placeholder="e.g. 2"
+              min="1"
+            />
+            <small style={{display:'block', marginTop:4, color:'#94a3b8'}}>
+              Max number of losing trades allowed per week
+            </small>
+          </div>
+        </div>
+
+        <div className="g2">
           <div className="field">
             <label>Monthly Loss Limit</label>
             <input 
@@ -92,9 +140,10 @@ export default function SetLimit() {
               value={monthly} 
               onChange={e => setMonthly(e.target.value)}
               placeholder="e.g. 5"
+              min="1"
             />
             <small style={{display:'block', marginTop:4, color:'#94a3b8'}}>
-              Maximum number of losing trades allowed per month.
+              Max number of losing trades allowed per month
             </small>
           </div>
         </div>

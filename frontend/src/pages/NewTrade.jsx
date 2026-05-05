@@ -414,12 +414,18 @@ export default function NewTrade({ editTrade, onDone }) {
         <div className="lim-ov" onClick={()=>setLimitModal('')}>
           <div className="lim-box" onClick={e=>e.stopPropagation()}>
             <div className="lim-top">
-              <div className="lim-title">{limitModal==='weekly'?'Weekly Limit Reached':'Monthly Loss Limit Reached'}</div>
+              <div className="lim-title">
+                {limitModal === 'weekly' ? 'Weekly Limit Reached' : 
+                 limitModal === 'weeklyLoss' ? 'Weekly Loss Limit Reached' : 
+                 'Monthly Loss Limit Reached'}
+              </div>
             </div>
             <div className="lim-body">
               <div className="lim-msg">
                 {limitModal === 'weekly' 
                   ? `You have reached ${userSettings.weekly_limit} trades this week. No more trades until next week.`
+                  : limitModal === 'weeklyLoss'
+                    ? `You have reached ${userSettings.weekly_loss_limit} losing trades this week. No more trades allowed this week.`
                   : limitModal === 'monthly' 
                     ? `You have reached ${userSettings.monthly_loss_limit} losing trades this month. Trading is blocked until next month.`
                     : ''
@@ -641,19 +647,17 @@ export default function NewTrade({ editTrade, onDone }) {
         </div>
       )}
 
-      {(mode === 'practice' || score >= 50) && (
-        <div className="card">
-          <div className="form-sec">Result (optional — add after trade closes)</div>
-          <div className="g2">
-            <div className="field"><label>Outcome</label>
-              <select value={result} onChange={e=>setResult(e.target.value)}>
-                <option value="">None</option><option>Win</option><option>Loss</option><option>Breakeven</option>
-              </select>
-            </div>
-            {result==='Win'&&<div className="field"><label>R Multiple</label><input type="number" value={rMult} onChange={e=>setRMult(e.target.value)} placeholder="2.5" min="0.01" step="0.01"/></div>}
+      <div className="card">
+        <div className="form-sec">Result (optional — add after trade closes)</div>
+        <div className="g2">
+          <div className="field"><label>Outcome</label>
+            <select value={result} onChange={e=>setResult(e.target.value)}>
+              <option value="">None</option><option>Win</option><option>Loss</option><option>Breakeven</option>
+            </select>
           </div>
+          {result==='Win'&&<div className="field"><label>R Multiple</label><input type="number" value={rMult} onChange={e=>setRMult(e.target.value)} placeholder="2.5" min="0.01" step="0.01"/></div>}
         </div>
-      )}
+      </div>
 
       <div className="card">
         <div className="form-sec">Notes</div>

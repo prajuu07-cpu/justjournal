@@ -129,7 +129,7 @@ export default function ModelBuilder() {
             <h1>Model Builder</h1>
             <div style={{display:'flex', gap:8}}>
               <button className="btn btn-ghost" onClick={() => setStep(1)}>Back</button>
-              <button className="btn btn-ok" onClick={submit} disabled={busy}>Submit to JustChill</button>
+              <button className="btn btn-ok" onClick={submit} disabled={busy}>Submit to Journal</button>
             </div>
           </div>
 

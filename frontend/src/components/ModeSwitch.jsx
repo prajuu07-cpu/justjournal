@@ -12,7 +12,7 @@ export default function ModeSwitch() {
           className={`mode-btn ${mode === 'justchill' ? 'active' : ''}`}
           onClick={() => switchMode('justchill')}
         >
-          JustChill
+          Journal
         </button>
         <button 
           className={`mode-btn ${mode === 'practice' ? 'active' : ''}`}

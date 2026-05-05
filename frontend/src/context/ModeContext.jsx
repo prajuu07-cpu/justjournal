@@ -14,6 +14,7 @@ export const ModeProvider = ({ children }) => {
   const [customModels, setCustomModels] = useState([]);
   const [userSettings, setUserSettings] = useState({ 
     weekly_limit: 2, 
+    weekly_loss_limit: 2,
     monthly_loss_limit: 5, 
     hidden_models: [], 
     binned_models: [], 

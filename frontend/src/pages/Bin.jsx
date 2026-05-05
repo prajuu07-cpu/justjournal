@@ -61,7 +61,7 @@ export default function Bin() {
       <div className="page" style={{ textAlign: 'center', padding: '40px' }}>
         <div className="card">
           <h2>Bin Not Available</h2>
-          <p style={{ color: '#64748b' }}>The model bin is only available in JustChill mode.</p>
+          <p style={{ color: '#64748b' }}>The model bin is only available in Journal mode.</p>
           <button className="btn btn-ghost" onClick={() => nav('/')} style={{ marginTop: 20 }}>Back to Dashboard</button>
         </div>
       </div>

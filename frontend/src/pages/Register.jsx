@@ -2,18 +2,62 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+const EyeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const EyeOffIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+    <line x1="2" y1="2" x2="22" y2="22" />
+  </svg>
+);
+
 export default function Register() {
   const { register } = useAuth();
   const nav = useNavigate();
-  const [form, setForm] = useState({ email:'', username:'', password:'' });
+  const [form, setForm] = useState({ email: '', username: '', password: '', confirmPassword: '' });
   const [err,  setErr]  = useState('');
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const submit = async e => {
-    e.preventDefault(); setErr(''); setBusy(true);
-    try { await register(form.email, form.username, form.password); nav('/'); }
+    e.preventDefault();
+    setErr('');
+
+    if (form.password !== form.confirmPassword) {
+      setErr('Passwords do not match. Please try again.');
+      return;
+    }
+
+    setBusy(true);
+    try { await register(form.email, form.username, form.password, form.confirmPassword); nav('/'); }
     catch(ex){ setErr(ex.response?.data?.error || 'Registration failed'); }
     finally{ setBusy(false); }
+  };
+
+  const passwordsTyped   = form.password.length > 0 && form.confirmPassword.length > 0;
+  const passwordsMatch   = form.password === form.confirmPassword;
+
+  const eyeBtnStyle = {
+    position: 'absolute',
+    right: '12px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+    color: '#64748B'
   };
 
   return (
@@ -23,10 +67,84 @@ export default function Register() {
         <p className="auth-sub">Create your account</p>
         {err && <div className="err-box">{err}</div>}
         <form onSubmit={submit}>
-          <div className="field"><label>Email *</label><input type="email" autoFocus value={form.email} onChange={e=>setForm(p=>({...p,email:e.target.value}))} placeholder="you@example.com" required/></div>
-          <div className="field"><label>Username *</label><input value={form.username} onChange={e=>setForm(p=>({...p,username:e.target.value}))} placeholder="letters, numbers, underscores" required/></div>
-          <div className="field"><label>Password *</label><input type="password" value={form.password} onChange={e=>setForm(p=>({...p,password:e.target.value}))} placeholder="min 6 characters" required/></div>
-          <button className="btn btn-primary btn-full" disabled={busy}>{busy?'Creating account…':'Create Account'}</button>
+          <div className="field">
+            <label>Email *</label>
+            <input
+              type="email"
+              autoFocus
+              value={form.email}
+              onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+              placeholder="you@example.com"
+              required
+            />
+          </div>
+          <div className="field">
+            <label>Username *</label>
+            <input
+              value={form.username}
+              onChange={e => setForm(p => ({ ...p, username: e.target.value }))}
+              placeholder="letters, numbers, underscores"
+              required
+            />
+          </div>
+          <div className="field">
+            <label>Password *</label>
+            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                value={form.password}
+                onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+                placeholder="min 6 characters"
+                required
+                style={{ paddingRight: '40px' }}
+              />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} style={eyeBtnStyle} tabIndex="-1">
+                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            </div>
+          </div>
+          <div className="field">
+            <label>Confirm Password *</label>
+            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                value={form.confirmPassword}
+                onChange={e => setForm(p => ({ ...p, confirmPassword: e.target.value }))}
+                placeholder="re-enter your password"
+                required
+                style={{
+                  paddingRight: '40px',
+                  borderColor: passwordsTyped
+                    ? passwordsMatch ? '#22c55e' : '#ef4444'
+                    : undefined,
+                  boxShadow: passwordsTyped
+                    ? passwordsMatch
+                      ? '0 0 0 3px rgba(34,197,94,0.15)'
+                      : '0 0 0 3px rgba(239,68,68,0.15)'
+                    : undefined,
+                }}
+              />
+              <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} style={eyeBtnStyle} tabIndex="-1">
+                {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            </div>
+            {passwordsTyped && (
+              <span style={{
+                fontSize: '0.75rem',
+                marginTop: '4px',
+                display: 'block',
+                color: passwordsMatch ? '#22c55e' : '#ef4444',
+              }}>
+                {passwordsMatch ? 'Passwords match' : 'Passwords do not match'}
+              </span>
+            )}
+          </div>
+          <button
+            className="btn btn-primary btn-full"
+            disabled={busy || (passwordsTyped && !passwordsMatch)}
+          >
+            {busy ? 'Creating account…' : 'Create Account'}
+          </button>
         </form>
         <p className="auth-switch">Have an account? <Link to="/login">Sign in</Link></p>
       </div>

@@ -50,7 +50,7 @@ S_DATE   = ParagraphStyle("ep_date",   fontName="Helvetica",      fontSize=10, t
 S_SEC    = ParagraphStyle("ep_sec",    fontName="Helvetica-Bold", fontSize=11, textColor=C_INDIGO, leading=15, spaceBefore=12, spaceAfter=5)
 S_CELL   = ParagraphStyle("ep_cell",   fontName="Helvetica",      fontSize=9,  textColor=C_DARK,   leading=13)
 S_CELL_B = ParagraphStyle("ep_cell_b", fontName="Helvetica-Bold", fontSize=9,  textColor=C_DARK,   leading=13)
-S_MONO   = ParagraphStyle("ep_mono",   fontName="Courier",        fontSize=8,  textColor=C_DARK,   leading=12)
+S_MONO   = ParagraphStyle("ep_mono",   fontName="Courier",        fontSize=8,  textColor=C_DARK,   leading=12, alignment=TA_CENTER)
 S_HDR    = ParagraphStyle("ep_hdr",    fontName="Helvetica-Bold", fontSize=8,  textColor=colors.white, leading=12)
 S_STAT_L = ParagraphStyle("ep_stat_l", fontName="Helvetica",      fontSize=7,  textColor=C_SUB,    leading=10)
 S_FOOT   = ParagraphStyle("ep_foot",   fontName="Helvetica",      fontSize=7,  textColor=C_SUB,    leading=10, alignment=TA_CENTER)

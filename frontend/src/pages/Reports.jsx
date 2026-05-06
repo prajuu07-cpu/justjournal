@@ -21,10 +21,6 @@ function ModelStatBadge({ model }) {
   const accentColor = model.color?.text || 'var(--indigo)';
   const bgColor = model.color?.bg || 'transparent';
 
-  // Determine RR color from value string (e.g. "+4.0R", "-3.0R", "0.0R")
-  const rrNum = parseFloat(model.rr);
-  const rrColor = isNaN(rrNum) ? 'inherit' : rrNum > 0 ? 'var(--green, #16a34a)' : rrNum < 0 ? 'var(--red, #dc2626)' : 'inherit';
-
   return (
     <div className="rpt-stat" style={{ borderLeft: `4px solid ${accentColor}`, backgroundColor: bgColor }}>
       <div className="rpt-sl" style={{ color: accentColor, fontSize: '12px', marginBottom: '10px', borderBottom: `1px solid ${model.color ? 'rgba(0,0,0,0.05)' : 'var(--faint)'}`, paddingBottom: '4px' }}>
@@ -49,7 +45,7 @@ function ModelStatBadge({ model }) {
         </div>
         <div>
           <div style={{ fontSize: '10px', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 600 }}>RR</div>
-          <div style={{ fontSize: '14px', fontWeight: 700, fontFamily: 'JetBrains Mono', color: rrColor }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
             {model.rr}
           </div>
         </div>

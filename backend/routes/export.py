@@ -167,11 +167,6 @@ def _model_stat_box(model, col_w):
 
     rr_str = _frr(rr)
     rr_c = C_DARK
-    try:
-        clean_v = rr_str.replace('+', '').replace('R', '').replace(':', '.')
-        f_val = float(clean_v)
-        rr_c = C_WIN if f_val > 0 else (C_LOSS if f_val < 0 else C_DARK)
-    except: pass
 
     # Internal grid for model metrics
     data = [
@@ -351,13 +346,6 @@ def _build_month_pdf(username: str, year: int, month: int,
 
     orr_val = s.get("overallRR", "N/A")
     orr_c   = C_DARK
-    if orr_val and orr_val != "N/A":
-        try:
-            # Handle +1.50R, -1.00R, 0:00R
-            clean_v = orr_val.replace('+', '').replace('R', '').replace(':', '.')
-            f_val = float(clean_v)
-            orr_c = C_WIN if f_val > 0 else (C_LOSS if f_val < 0 else C_DARK)
-        except: pass
 
     stat_rows = [
         [
@@ -523,12 +511,6 @@ def _build_year_pdf(username: str, year: int,
 
     orr_val = s.get("overallRR", "N/A")
     orr_c   = C_DARK
-    if orr_val and orr_val != "N/A":
-        try:
-            clean_v = orr_val.replace('+', '').replace('R', '').replace(':', '.')
-            f_val = float(clean_v)
-            orr_c = C_WIN if f_val > 0 else (C_LOSS if f_val < 0 else C_DARK)
-        except: pass
 
     stat_rows = [
         [

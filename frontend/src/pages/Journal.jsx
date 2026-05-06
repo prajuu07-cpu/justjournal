@@ -425,6 +425,9 @@ export default function Journal() {
                     type="number"
                     value={addResult.rMult}
                     onChange={e => setAddResult(p => ({ ...p, rMult: e.target.value }))}
+                    onKeyDown={e => {
+                      if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+                    }}
                     placeholder="e.g. 2.5"
                     min="0.01"
                     step="0.01"

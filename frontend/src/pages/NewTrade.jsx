@@ -664,7 +664,19 @@ export default function NewTrade({ editTrade, onDone }) {
                   <option value="">None</option><option>Win</option><option>Loss</option><option>Breakeven</option>
                 </select>
               </div>
-              {result==='Win'&&<div className="field"><label>R Multiple</label><input type="number" value={rMult} onChange={e=>setRMult(e.target.value)} placeholder="2.5" min="0.01" step="0.01"/></div>}
+              {result==='Win'&&<div className="field"><label>R Multiple</label>
+                <input 
+                  type="number" 
+                  value={rMult} 
+                  onChange={e=>setRMult(e.target.value)} 
+                  onKeyDown={e => {
+                    if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+                  }}
+                  placeholder="2.5" 
+                  min="0.01" 
+                  step="0.01"
+                />
+              </div>}
             </div>
           </div>
 

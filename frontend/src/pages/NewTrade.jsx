@@ -463,9 +463,9 @@ export default function NewTrade({ editTrade, onDone }) {
               <div style={{ padding: '8px 0', width: '100%' }}>
                 <button 
                   type="button"
-                  className="btn btn-ghost btn-sm"
+                  className="btn btn-primary btn-sm"
                   onClick={handleAddModel}
-                  style={{ color: '#6366f1', border: '1px dashed #6366f1' }}
+                  style={{ padding: '8px 16px', borderRadius: '8px' }}
                 >
                   + Add Models from Practice Mode
                 </button>

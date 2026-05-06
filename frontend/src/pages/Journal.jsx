@@ -287,7 +287,7 @@ export default function Journal() {
         ))}
       </div>
 
-      {err && <div className="err-box">{err}</div>}
+      {err && !addResult && <div className="err-box">{err}</div>}
 
       {loading ? (
         <div className="loading">Loading…</div>

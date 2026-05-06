@@ -203,10 +203,14 @@ input:checked + .slider:before {
   margin-bottom: 6px;
 }
 .field.disabled {
-  opacity: 0.5;
+  opacity: 0.75;
+}
+.field.disabled label {
+  color: var(--muted);
 }
 .field.disabled input {
   background: var(--bg);
   cursor: not-allowed;
   border-color: var(--border);
+  color: var(--muted);
 }

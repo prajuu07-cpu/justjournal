@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useMode } from '../context/ModeContext';
 
 const EyeIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -20,6 +22,15 @@ const EyeOffIcon = () => (
 
 export default function ChangePassword() {
   const { logout } = useAuth();
+  const { mode } = useMode();
+  const nav = useNavigate();
+
+  // Security redirect: Block access in Practice mode
+  useEffect(() => {
+    if (mode === 'practice') {
+      nav('/', { replace: true });
+    }
+  }, [mode, nav]);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

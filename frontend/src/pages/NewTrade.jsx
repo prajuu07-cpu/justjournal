@@ -64,8 +64,12 @@ function playWarning() {
 
 export default function NewTrade({ editTrade, onDone }) {
   const nav = useNavigate();
-  const { mode, practiceDefaults, updatePracticeDefaults, customModels, deleteModel, restoreModel, updateSettings, userSettings } = useMode();
+  const { mode, switchMode, practiceDefaults, updatePracticeDefaults, customModels, deleteModel, restoreModel, updateSettings, userSettings } = useMode();
   const isEdit = !!editTrade?.id;
+  const handleAddModel = () => {
+    switchMode('practice');
+    nav('/model-builder');
+  };
 
 
   const [model,  setModel]  = useState(() => {
@@ -456,8 +460,15 @@ export default function NewTrade({ editTrade, onDone }) {
         <div className="field" style={{marginBottom: '0.5rem'}}>
           <div style={{display:'flex', gap: '8px', alignItems: 'center', maxWidth: '100%', overflowX: 'auto', paddingBottom: '8px'}}>
             {displayBadges.length === 0 && mode === 'justchill' && (
-              <div style={{color: '#64748b', fontSize: '0.85rem', padding: '6px 0'}}>
-                No models available. Please add models from Practice mode.
+              <div style={{ padding: '8px 0', width: '100%' }}>
+                <button 
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={handleAddModel}
+                  style={{ color: '#6366f1', border: '1px dashed #6366f1' }}
+                >
+                  + Add Models from Practice Mode
+                </button>
               </div>
             )}
             <div

@@ -434,7 +434,7 @@ export default function Journal() {
                   />
                 </div>
               )}
-              {err && <div className="err-box" style={{marginBottom: 12, padding: '8px 12px', fontSize: '0.85rem'}}>{err}</div>}
+              {err && <div style={{color: '#ef4444', fontSize: '0.85rem', marginBottom: 12, fontWeight: 500}}>{err}</div>}
               <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
                 <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setErr(''); setAddResult(null); }}>Cancel</button>
                 <button className="btn btn-primary" style={{ flex: 1 }} onClick={saveResult} disabled={!addResult.result}>Save</button>

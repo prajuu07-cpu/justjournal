@@ -171,8 +171,7 @@ export default function NewTrade({ editTrade, onDone }) {
 
     let rm=null, res_=result||null;
     if (asFinal && res_) {
-      rm = res_==='Loss'?-1:res_==='Breakeven'?0:parseFloat(rMult);
-      if (res_==='Win'&&(isNaN(rm)||rm<=0)){ setErr('Win needs a positive R multiple'); return; }
+      rm = res_==='Loss'?-1:res_==='Breakeven'?0:(parseFloat(rMult) || 0);
     }
 
     setBusy(true);

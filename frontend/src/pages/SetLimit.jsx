@@ -7,16 +7,23 @@ export default function SetLimit() {
   const nav = useNavigate();
   
   const [weekly, setWeekly] = useState(userSettings.weekly_limit || 2);
+  const [weeklyEnabled, setWeeklyEnabled] = useState(userSettings.weekly_limit_enabled ?? true);
   const [weeklyLoss, setWeeklyLoss] = useState(userSettings.weekly_loss_limit || 2);
+  const [weeklyLossEnabled, setWeeklyLossEnabled] = useState(userSettings.weekly_loss_limit_enabled ?? true);
   const [monthly, setMonthly] = useState(userSettings.monthly_loss_limit || 5);
+  const [monthlyEnabled, setMonthlyEnabled] = useState(userSettings.monthly_loss_limit_enabled ?? true);
+
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
-
+ 
   useEffect(() => {
     setWeekly(userSettings.weekly_limit ?? 2);
+    setWeeklyEnabled(userSettings.weekly_limit_enabled ?? true);
     setWeeklyLoss(userSettings.weekly_loss_limit ?? 2);
+    setWeeklyLossEnabled(userSettings.weekly_loss_limit_enabled ?? true);
     setMonthly(userSettings.monthly_loss_limit ?? 5);
+    setMonthlyEnabled(userSettings.monthly_loss_limit_enabled ?? true);
   }, [userSettings]);
 
   const isValidPositiveInteger = (val) => {
@@ -28,16 +35,28 @@ export default function SetLimit() {
     setError('');
     setMsg('');
 
-    if (!isValidPositiveInteger(weekly) || !isValidPositiveInteger(weeklyLoss) || !isValidPositiveInteger(monthly)) {
-      setError('Please enter a valid positive number.');
+    // Only validate if enabled
+    if (weeklyEnabled && !isValidPositiveInteger(weekly)) {
+      setError('Please enter a valid weekly trade limit.');
+      return;
+    }
+    if (weeklyLossEnabled && !isValidPositiveInteger(weeklyLoss)) {
+      setError('Please enter a valid weekly loss limit.');
+      return;
+    }
+    if (monthlyEnabled && !isValidPositiveInteger(monthly)) {
+      setError('Please enter a valid monthly loss limit.');
       return;
     }
 
     setBusy(true);
     const success = await updateSettings({
       weekly_limit: parseInt(weekly, 10),
+      weekly_limit_enabled: weeklyEnabled,
       weekly_loss_limit: parseInt(weeklyLoss, 10),
-      monthly_loss_limit: parseInt(monthly, 10)
+      weekly_loss_limit_enabled: weeklyLossEnabled,
+      monthly_loss_limit: parseInt(monthly, 10),
+      monthly_loss_limit_enabled: monthlyEnabled
     });
     
     if (success) {
@@ -103,28 +122,50 @@ export default function SetLimit() {
         </p>
 
         <div className="g2" style={{ marginBottom: '16px' }}>
-          <div className="field">
-            <label>Weekly Trade Limit</label>
+          <div className={`field ${!weeklyEnabled ? 'disabled' : ''}`}>
+            <div className="field-head">
+              <label>Weekly Trade Limit</label>
+              <label className="switch">
+                <input 
+                  type="checkbox" 
+                  checked={weeklyEnabled} 
+                  onChange={e => setWeeklyEnabled(e.target.checked)} 
+                />
+                <span className="slider"></span>
+              </label>
+            </div>
             <input 
               type="number" 
               value={weekly} 
               onChange={e => setWeekly(e.target.value)}
               placeholder="e.g. 2"
               min="1"
+              disabled={!weeklyEnabled}
             />
             <small style={{display:'block', marginTop:4, color:'#94a3b8'}}>
               Max number of trades allowed per week
             </small>
           </div>
 
-          <div className="field">
-            <label>Weekly Loss Limit</label>
+          <div className={`field ${!weeklyLossEnabled ? 'disabled' : ''}`}>
+            <div className="field-head">
+              <label>Weekly Loss Limit</label>
+              <label className="switch">
+                <input 
+                  type="checkbox" 
+                  checked={weeklyLossEnabled} 
+                  onChange={e => setWeeklyLossEnabled(e.target.checked)} 
+                />
+                <span className="slider"></span>
+              </label>
+            </div>
             <input 
               type="number" 
               value={weeklyLoss} 
               onChange={e => setWeeklyLoss(e.target.value)}
               placeholder="e.g. 2"
               min="1"
+              disabled={!weeklyLossEnabled}
             />
             <small style={{display:'block', marginTop:4, color:'#94a3b8'}}>
               Max number of losing trades allowed per week
@@ -133,14 +174,25 @@ export default function SetLimit() {
         </div>
 
         <div className="g2">
-          <div className="field">
-            <label>Monthly Loss Limit</label>
+          <div className={`field ${!monthlyEnabled ? 'disabled' : ''}`}>
+            <div className="field-head">
+              <label>Monthly Loss Limit</label>
+              <label className="switch">
+                <input 
+                  type="checkbox" 
+                  checked={monthlyEnabled} 
+                  onChange={e => setMonthlyEnabled(e.target.checked)} 
+                />
+                <span className="slider"></span>
+              </label>
+            </div>
             <input 
               type="number" 
               value={monthly} 
               onChange={e => setMonthly(e.target.value)}
               placeholder="e.g. 5"
               min="1"
+              disabled={!monthlyEnabled}
             />
             <small style={{display:'block', marginTop:4, color:'#94a3b8'}}>
               Max number of losing trades allowed per month

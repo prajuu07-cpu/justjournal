@@ -17,8 +17,11 @@ def get_settings():
         
     return jsonify({
         "weekly_limit": settings.get("weekly_limit", 2),
+        "weekly_limit_enabled": settings.get("weekly_limit_enabled", True),
         "weekly_loss_limit": settings.get("weekly_loss_limit", 2),
+        "weekly_loss_limit_enabled": settings.get("weekly_loss_limit_enabled", True),
         "monthly_loss_limit": settings.get("monthly_loss_limit", 5),
+        "monthly_loss_limit_enabled": settings.get("monthly_loss_limit_enabled", True),
         "hidden_models": settings.get("hidden_models", []),
         "binned_models": settings.get("binned_models", []),
         "archived_models": settings.get("archived_models", []),
@@ -33,18 +36,29 @@ def update_settings():
     data = request.get_json()
     
     weekly_limit = data.get("weekly_limit")
+    weekly_limit_enabled = data.get("weekly_limit_enabled")
     weekly_loss_limit = data.get("weekly_loss_limit")
+    weekly_loss_limit_enabled = data.get("weekly_loss_limit_enabled")
     monthly_loss_limit = data.get("monthly_loss_limit")
+    monthly_loss_limit_enabled = data.get("monthly_loss_limit_enabled")
     
     # Use existing settings if fields are missing
     existing = db.user_settings.find_one({"user_id": uid}) or {}
     
     if weekly_limit is None:
         weekly_limit = existing.get("weekly_limit", 2)
+    if weekly_limit_enabled is None:
+        weekly_limit_enabled = existing.get("weekly_limit_enabled", True)
+
     if weekly_loss_limit is None:
         weekly_loss_limit = existing.get("weekly_loss_limit", 2)
+    if weekly_loss_limit_enabled is None:
+        weekly_loss_limit_enabled = existing.get("weekly_loss_limit_enabled", True)
+
     if monthly_loss_limit is None:
         monthly_loss_limit = existing.get("monthly_loss_limit", 5)
+    if monthly_loss_limit_enabled is None:
+        monthly_loss_limit_enabled = existing.get("monthly_loss_limit_enabled", True)
         
     try:
         weekly_limit = int(weekly_limit)
@@ -57,8 +71,11 @@ def update_settings():
         {"user_id": uid},
         {"$set": {
             "weekly_limit": weekly_limit,
+            "weekly_limit_enabled": bool(weekly_limit_enabled),
             "weekly_loss_limit": weekly_loss_limit,
+            "weekly_loss_limit_enabled": bool(weekly_loss_limit_enabled),
             "monthly_loss_limit": monthly_loss_limit,
+            "monthly_loss_limit_enabled": bool(monthly_loss_limit_enabled),
             "hidden_models": data.get("hidden_models", []),
             "binned_models": data.get("binned_models", []),
             "archived_models": data.get("archived_models", []),
@@ -71,8 +88,11 @@ def update_settings():
         "message": "Settings updated successfully",
         "settings": {
             "weekly_limit": weekly_limit,
+            "weekly_limit_enabled": bool(weekly_limit_enabled),
             "weekly_loss_limit": weekly_loss_limit,
+            "weekly_loss_limit_enabled": bool(weekly_loss_limit_enabled),
             "monthly_loss_limit": monthly_loss_limit,
+            "monthly_loss_limit_enabled": bool(monthly_loss_limit_enabled),
             "hidden_models": data.get("hidden_models", []),
             "binned_models": data.get("binned_models", []),
             "archived_models": data.get("archived_models", []),

@@ -227,8 +227,6 @@ def create_trade():
                 pnl = 0.0
             else: # Win
                 r_multiple = float(data.get("r_multiple") or 0)
-                if r_multiple <= 0:
-                    return jsonify(error="Win needs a positive R multiple"), 400
                 pnl = _calc_pnl(risk, r_multiple) if status == "final" and result else None
 
     if mode == "justchill":
@@ -371,8 +369,6 @@ def update_trade(trade_id):
                 pnl = 0.0
             else: # Win
                 r_multiple = float(data.get("r_multiple") or 0)
-                if r_multiple <= 0:
-                    return jsonify(error="Win needs a positive R multiple"), 400
                 pnl = _calc_pnl(risk, r_multiple)
         else:
             r_multiple, pnl = None, None
@@ -480,8 +476,6 @@ def add_result(trade_id):
         r_multiple = 0.0
     else:
         r_multiple = float(data.get("r_multiple") or 0)
-    if result == "Win" and r_multiple <= 0:
-        return jsonify(error="Win needs a positive R multiple"), 400
 
     if result == "Loss":
         pnl = -float(existing.get("risk_percent", 1.0))

@@ -395,8 +395,7 @@ export default function NewTrade({ editTrade, onDone }) {
 
   const dynamicTheme = useMemo(() => {
     const badge = modelBadges.find(m => m.name === model);
-    const isBuiltInColor = model === 'Model 1' || model === 'Model 2';
-    if (badge?.color && !isBuiltInColor) {
+    if (badge?.color && model !== 'Practice') {
       return {
         wBg: badge.color.bg,
         wBorder: badge.color.border || badge.color.text,
@@ -487,7 +486,7 @@ export default function NewTrade({ editTrade, onDone }) {
                   }}
                 >
                   <button
-                    className={`mbtn ${model === m.name ? (m.name === 'Model 1' ? 'sel-m1' : (m.name === 'Model 2' ? 'sel-m2' : '')) : ''}`}
+                    className={`mbtn ${model === m.name ? 'sel-dynamic' : ''}`}
                     style={{
                       height: '34px',
                       padding: '0 12px',
@@ -496,30 +495,27 @@ export default function NewTrade({ editTrade, onDone }) {
                       alignItems: 'center',
                       whiteSpace: 'nowrap',
                       pointerEvents: dragSrcIdx !== null ? 'none' : 'auto',
-                      ...(m.name === 'Practice' && model === m.name ? {
-                        backgroundColor: '#F1F5F9',
-                        color: '#64748B',
-                        borderColor: '#64748B',
-                        borderWidth: '1px',
-                        boxShadow: `0 4px 10px #CBD5E1`
-                      } : m.name === 'Practice' ? {
-                        backgroundColor: '#F1F5F9',
-                        color: '#64748B',
-                        borderColor: '#CBD5E1',
-                        borderWidth: '1px',
-                      } : m.name.toLowerCase() === 'model 3' && model === m.name ? {
-                        backgroundColor: '#FDF2F8',
-                        color: '#DB2777',
-                        borderColor: '#DB2777',
-                        borderWidth: '1px',
-                        boxShadow: `0 4px 10px #FCE7F3`
-                      } : (m.color && model === m.name && m.name !== 'Model 1' && m.name !== 'Model 2' ? {
-                        backgroundColor: m.color.bg,
-                        color: m.color.text,
-                        borderColor: m.color.text,
-                        borderWidth: '1px',
-                        boxShadow: `0 4px 10px ${m.color.border}`
-                      } : {}))
+                      ...(model === m.name ? (
+                        m.name === 'Practice' ? {
+                          backgroundColor: '#F1F5F9',
+                          color: '#64748B',
+                          borderColor: '#64748B',
+                          borderWidth: '1px',
+                          boxShadow: `0 4px 10px #CBD5E1`
+                        } : (m.color ? {
+                          backgroundColor: m.color.bg,
+                          color: m.color.text,
+                          borderColor: m.color.border || m.color.text,
+                          boxShadow: `0 0 0 1px ${m.color.border || m.color.text} inset`
+                        } : {})
+                      ) : (
+                        m.name === 'Practice' ? {
+                          backgroundColor: '#F1F5F9',
+                          color: '#64748B',
+                          borderColor: '#CBD5E1',
+                          borderWidth: '1px',
+                        } : {}
+                      ))
                     }}
                     onClick={() => {
                       if (dragSrcIdx !== null) return; // ignore clicks during mouse drag

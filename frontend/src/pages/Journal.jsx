@@ -308,7 +308,7 @@ export default function Journal() {
               <thead>
                 <tr>
                   <th>Date</th><th>Pair</th>{mode === 'practice' && <th>Session</th>}<th>Model</th><th>Grade</th>
-                  <th>Status</th><th>RR</th><th>PNL</th><th>Result</th><th></th>
+                  <th>Status</th><th style={{textAlign:'center'}}>RR</th><th>PNL</th><th>Result</th><th></th>
                 </tr>
               </thead>
               <tbody>
@@ -360,7 +360,7 @@ export default function Journal() {
                       </span>
                     </td>
                     <td><span className={`pill ${t.status === 'final' ? 'pFin' : 'pDft'}`}>{t.status}</span></td>
-                    <td className="mono">{t.r_multiple != null ? `${parseFloat(t.r_multiple).toFixed(2)}R` : '—'}</td>
+                    <td style={{textAlign:'center'}} className="mono">{t.r_multiple != null ? (parseFloat(t.r_multiple) === 0 ? '0:00R' : `${parseFloat(t.r_multiple) > 0 ? '+' : ''}${parseFloat(t.r_multiple).toFixed(2)}R`) : '—'}</td>
                     <td className={t.pnl_percentage > 0 ? 'rp' : t.pnl_percentage < 0 ? 'rn' : 'mono'}>
                       {t.pnl_percentage != null
                         ? `${t.pnl_percentage >= 0 ? '+' : ''}${parseFloat(t.pnl_percentage).toFixed(2)}%`
@@ -380,9 +380,10 @@ export default function Journal() {
                           const isCustomActive = customModels.some(cm => cm.name === t.model);
                           const isBuiltin = t.model === 'Model 1' || t.model === 'Model 2';
                           const isPractice = t.model === 'Practice' || t.model === 'Practice Model';
-                          
-                          const canEdit = isPractice || (isBuiltin && !isBinned) || isCustomActive;
-                          
+                          const hasFinalResult = !!t.result; // completed trades always editable
+
+                          const canEdit = hasFinalResult || isPractice || (isBuiltin && !isBinned) || isCustomActive;
+
                           return canEdit && (
                             <button className="btn btn-xs btn-ghost" onClick={() => setEditing(t)}>Edit</button>
                           );

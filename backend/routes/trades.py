@@ -14,7 +14,7 @@ from bson.errors import InvalidId
 from datetime import datetime, timezone, date, timedelta
 from typing import Optional
 from db import get_db
-from utils import get_mode
+from utils import get_mode, get_model_color, model_stats_from_trades, trade_rr
 from rebuild_reports import rebuild_reports
 
 trades_bp = Blueprint("trades", __name__)
@@ -74,17 +74,6 @@ def _calc_score(model: str, cl: dict, uid: Optional[ObjectId] = None) -> int:
             
     return 0
 
-def _get_model_color(model: str, uid: ObjectId) -> Optional[dict]:
-    if model in ("Model 1", "Practice"):
-        return { "bg": "#F3E8FF", "text": "#7E22CE", "border": "#E9D5FF" } # pM1 style
-    if model == "Model 2":
-        return { "bg": "#E0E7FF", "text": "#4F46E5", "border": "#C7D2FE" } # pM2 style
-    
-    db = get_db()
-    custom = db.custom_models.find_one({"user_id": uid, "name": model})
-    if custom and "color" in custom:
-        return custom["color"]
-    return None
 
 def _calc_grade(score: int) -> str:
     if score >= 90: return "A+"
@@ -108,6 +97,8 @@ def _trade_out(doc: dict) -> dict:
     doc = dict(doc)
     doc["id"]      = str(doc.pop("_id"))
     doc["user_id"] = str(doc["user_id"])
+    if doc.get("model_id"):
+        doc["model_id"] = str(doc["model_id"])
     return doc
 
 def _oid(raw: str) -> Optional[ObjectId]:
@@ -136,9 +127,13 @@ def list_trades():
     print(f"[DEBUG trades/list] User: {uid} | Mode: {mode} | Filter: {filt}")
     trades = list(db.trades.find(filt).sort([("date", -1), ("created_at", -1)]))
     
-    # Get all unique model names for the current user and mode
-    available_models = db.trades.distinct("model", {"user_id": uid, "mode": mode})
-    
+    # Always get all unique model names for current user+mode (unfiltered)
+    # so the dropdown retains all options even when a specific model is selected
+    available_models = sorted(
+        db.trades.distinct("model", {"user_id": uid, "mode": mode, "status": {"$ne": "binned"}}),
+        key=lambda m: (m or "")
+    )
+
     return jsonify(
         trades=[_trade_out(t) for t in trades],
         models=available_models
@@ -177,6 +172,7 @@ def create_trade():
     trade_date = (data.get("date") or "").strip()
     session    = (data.get("session") or "").strip()
     model      = data.get("model", "Model 1")
+    model_id   = data.get("model_id") # The MongoDB _id of the custom model instance
     direction  = data.get("direction", "Buy")
     risk_str   = data.get("risk_percent")
     status     = data.get("status", "draft")
@@ -224,7 +220,7 @@ def create_trade():
             if result not in ("Win", "Loss", "Breakeven"):
                 return jsonify(error="result must be Win, Loss or Breakeven"), 400
             if result == "Loss":
-                r_multiple = 0.0
+                r_multiple = -1.0
                 pnl = -float(risk)
             elif result == "Breakeven":
                 r_multiple = 0.0
@@ -283,7 +279,6 @@ def create_trade():
             lcount = db.trades.count_documents(l_filt)
             if lcount >= m_limit:
                 return jsonify(limitType="monthly", error="Monthly loss limit reached. No more losing trades allowed this month."), 422
-
     now = _now_iso()
     doc = {
         "user_id":        uid,
@@ -292,8 +287,9 @@ def create_trade():
         "date":           trade_date,
         "pair":           pair,
         "model":          model,
-        "model_color":    _get_model_color(model, uid),
+        "model_id":       model_id,
         "direction":      direction,
+        "model_color":    get_model_color(model, uid),
         "risk_percent":   risk,
         "checklist":      checklist,
         "score":          score,
@@ -335,8 +331,9 @@ def update_trade(trade_id):
     trade_date = (data.get("date") or existing.get("date", "")).strip()
     session    = data.get("session", existing.get("session", ""))
     if isinstance(session, str): session = session.strip()
-    model      = data.get("model",        existing.get("model",      "Model 1"))
-    direction  = data.get("direction",    existing.get("direction",  "Buy"))
+    model       = data.get("model", existing.get("model"))
+    model_id    = data.get("model_id", existing.get("model_id"))
+    direction   = data.get("direction", existing.get("direction"))
     risk_str   = data.get("risk_percent", existing.get("risk_percent"))
     status     = data.get("status",       existing.get("status",     "draft"))
     checklist  = data.get("checklist",    existing.get("checklist",  {}))
@@ -367,7 +364,7 @@ def update_trade(trade_id):
         result = data["result"] or None
         if result:
             if result == "Loss":
-                r_multiple = 0.0
+                r_multiple = -1.0
                 pnl = -float(risk)
             elif result == "Breakeven":
                 r_multiple = 0.0
@@ -437,7 +434,8 @@ def update_trade(trade_id):
         "date":           trade_date,
         "session":        session if get_mode() == "practice" else None,
         "model":          model,
-        "model_color":    _get_model_color(model, uid),
+        "model_id":       model_id,
+        "model_color":    get_model_color(model, uid),
         "direction":      direction,
         "risk_percent":   risk,
         "checklist":      checklist,
@@ -476,7 +474,9 @@ def add_result(trade_id):
     if result not in ("Win", "Loss", "Breakeven"):
         return jsonify(error="result must be Win, Loss or Breakeven"), 400
 
-    if result in ("Loss", "Breakeven"):
+    if result == "Loss":
+        r_multiple = -1.0
+    elif result == "Breakeven":
         r_multiple = 0.0
     else:
         r_multiple = float(data.get("r_multiple") or 0)
@@ -911,6 +911,7 @@ def get_month_trades(year, month):
             "id":           str(t.get("_id")),
             "pair":         t.get("pair"),
             "model":        t.get("model"),
+            "model_id":     str(t.get("model_id")) if t.get("model_id") else None,
             "direction":    t.get("direction"),
             "pnl":          pnl_v,
             "risk_percent": t.get("risk_percent"),
@@ -918,6 +919,17 @@ def get_month_trades(year, month):
             "grade":        t.get("grade"),
             "result":       t.get("result"),
         })
+
+    # Model stats — Universal RR Engine
+    final_m_stats = model_stats_from_trades(trades, uid)
+    _orr = round(sum(trade_rr(t) for t in trades), 2) if total else 0
+    if total:
+        if _orr == 0:
+            overall_rr_str = "0:00R"
+        else:
+            overall_rr_str = f"{'+' if _orr > 0 else ''}{_orr:.2f}R"
+    else:
+        overall_rr_str = 'N/A'
 
     return jsonify(
         v="v2",
@@ -930,6 +942,8 @@ def get_month_trades(year, month):
             "netPNL":         net_pnl,
             "maxLossStreak":  max_streak,
             "dailyBreakdown": daily_breakdown,
+            "overallRR":      overall_rr_str,
+            "modelStats":     final_m_stats
         }
     )
 
@@ -995,6 +1009,17 @@ def get_year_trades(year):
     # Format monthly breakdown for array output
     mb_arr = [{"month": m, "pnl": round(monthly_breakdown[m], 2)} for m in range(1, 13)]
 
+    # Model stats — Universal RR Engine
+    final_m_stats = model_stats_from_trades(trades, uid)
+    _orr = round(sum(trade_rr(t) for t in trades), 2) if total else 0
+    if total:
+        if _orr == 0:
+            overall_rr_str = "0:00R"
+        else:
+            overall_rr_str = f"{'+' if _orr > 0 else ''}{_orr:.2f}R"
+    else:
+        overall_rr_str = 'N/A'
+
     return jsonify(
         trades=out_trades,
         stats={
@@ -1006,5 +1031,7 @@ def get_year_trades(year):
             "bestMonth":        best_month,
             "worstMonth":       worst_month,
             "monthlyBreakdown": mb_arr,
+            "overallRR":        overall_rr_str,
+            "modelStats":       final_m_stats
         }
     )

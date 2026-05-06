@@ -17,6 +17,47 @@ function StatBadge({ label, value, cls='' }) {
   );
 }
 
+function ModelStatBadge({ model }) {
+  const accentColor = model.color?.text || 'var(--indigo)';
+  const bgColor = model.color?.bg || 'transparent';
+
+  // Determine RR color from value string (e.g. "+4.0R", "-3.0R", "0.0R")
+  const rrNum = parseFloat(model.rr);
+  const rrColor = isNaN(rrNum) ? 'inherit' : rrNum > 0 ? 'var(--green, #16a34a)' : rrNum < 0 ? 'var(--red, #dc2626)' : 'inherit';
+
+  return (
+    <div className="rpt-stat" style={{ borderLeft: `4px solid ${accentColor}`, backgroundColor: bgColor }}>
+      <div className="rpt-sl" style={{ color: accentColor, fontSize: '12px', marginBottom: '10px', borderBottom: `1px solid ${model.color ? 'rgba(0,0,0,0.05)' : 'var(--faint)'}`, paddingBottom: '4px' }}>
+        {model.name}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px' }}>
+        <div>
+          <div style={{ fontSize: '10px', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 600 }}>Trades</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, fontFamily: 'JetBrains Mono' }}>{model.trades}</div>
+        </div>
+        <div>
+          <div style={{ fontSize: '10px', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 600 }}>Win Rate</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, fontFamily: 'JetBrains Mono' }} className={model.winRate >= 50 ? 'rp' : model.winRate < 50 ? 'rn' : ''}>
+            {model.winRate}%
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: '10px', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 600 }}>Net PnL</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, fontFamily: 'JetBrains Mono' }} className={model.netPNL > 0 ? 'rp' : model.netPNL < 0 ? 'rn' : ''}>
+            {model.netPNL >= 0 ? '+' : ''}{model.netPNL}%
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: '10px', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 600 }}>RR</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, fontFamily: 'JetBrains Mono', color: rrColor }}>
+            {model.rr}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function MonthlyReports() {
   const { mode } = useMode();
   const [year, setYear] = useState(new Date().getFullYear());
@@ -88,9 +129,14 @@ export function MonthlyReports() {
             <StatBadge label="Total Trades" value={data.stats.totalTrades}/>
             <StatBadge label="Wins" value={data.stats.wins} cls="rp"/>
             <StatBadge label="Losses" value={data.stats.losses} cls="rn"/>
-            <StatBadge label="Win Rate" value={`${data.stats.winRate}%`} cls={data.stats.winRate > 50 ? 'rp' : data.stats.winRate < 50 ? 'rn' : ''}/>
+            <StatBadge label="Win Rate" value={`${data.stats.winRate}%`} cls={data.stats.winRate >= 50 ? 'rp' : data.stats.winRate < 50 ? 'rn' : ''}/>
             <StatBadge label="Net PNL" value={`${data.stats.netPNL>=0?'+':''}${data.stats.netPNL}%`} cls={data.stats.netPNL > 0 ? 'rp' : data.stats.netPNL < 0 ? 'rn' : ''}/>
+            <StatBadge label="Overall RR" value={data.stats.overallRR} cls="svB"/>
             <StatBadge label="Max Loss Streak" value={data.stats.maxLossStreak} cls="rn"/>
+            
+            {data.stats.modelStats && data.stats.modelStats.map(m => (
+              <ModelStatBadge key={m.name} model={m} />
+            ))}
           </div>
 
           <DailyPnLCalendar
@@ -102,7 +148,7 @@ export function MonthlyReports() {
           <div className="card" style={{padding:0,overflow:'hidden'}}>
             <div className="tbl-wrap">
               <table className="tbl">
-                <thead><tr><th>Date</th><th>Pair</th>{mode === 'practice' && <th>Session</th>}<th>Model</th>{mode !== 'practice' && <th>Grade</th>}<th>Dir</th><th>Risk</th><th>Result</th><th>R:R</th><th>PNL</th></tr></thead>
+                <thead><tr><th>Date</th><th>Pair</th>{mode === 'practice' && <th>Session</th>}<th>Model</th>{mode !== 'practice' && <th>Grade</th>}<th>Dir</th><th>Risk</th><th>Result</th><th style={{textAlign:'center'}}>R:R</th><th>PNL</th></tr></thead>
                 <tbody>
                   {data.trades.map(t=>(
                     <tr key={t.id} className={t.status === 'final' ? 'tr-final' : ''}>
@@ -139,7 +185,7 @@ export function MonthlyReports() {
                       {mode !== 'practice' && <td><span className={`pill ${t.grade==='A+'?'pAp':t.grade==='A'?'pA':t.grade==='B'?'pB':t.grade==='C'?'pC':'pLow'}`}>{t.grade}</span></td>}
                       <td>{t.direction}</td><td>{t.risk_percent}%</td>
                       <td>{t.result?<span className={`pill ${t.result==='Win'?'pWin':t.result==='Loss'?'pLoss':'pBE'}`}>{t.result}</span>:'—'}</td>
-                      <td className="mono">{t.r_multiple?`${parseFloat(t.r_multiple).toFixed(2)}R`:'—'}</td>
+                      <td style={{textAlign:'center'}} className="mono">{t.r_multiple != null ? (parseFloat(t.r_multiple) === 0 ? '0:00R' : `${parseFloat(t.r_multiple) > 0 ? '+' : ''}${parseFloat(t.r_multiple).toFixed(2)}R`) : '—'}</td>
                       <td className={t.pnl_percentage>0?'rp':t.pnl_percentage<0?'rn':'mono'}>{t.pnl_percentage!=null?`${t.pnl_percentage>=0?'+':''}${parseFloat(t.pnl_percentage).toFixed(2)}%`:'—'}</td>
                     </tr>
                   ))}
@@ -217,10 +263,15 @@ export function YearlyReports() {
             <StatBadge label="Total Trades" value={data.stats.totalTrades}/>
             <StatBadge label="Wins" value={data.stats.wins} cls="rp"/>
             <StatBadge label="Losses" value={data.stats.losses} cls="rn"/>
-            <StatBadge label="Win Rate" value={`${data.stats.winRate}%`} cls={data.stats.winRate > 50 ? 'rp' : data.stats.winRate < 50 ? 'rn' : ''}/>
+            <StatBadge label="Win Rate" value={`${data.stats.winRate}%`} cls={data.stats.winRate >= 50 ? 'rp' : data.stats.winRate < 50 ? 'rn' : ''}/>
             <StatBadge label="Net PNL" value={`${data.stats.netPNL>=0?'+':''}${data.stats.netPNL}%`} cls={data.stats.netPNL > 0 ? 'rp' : data.stats.netPNL < 0 ? 'rn' : ''}/>
+            <StatBadge label="Overall RR" value={data.stats.overallRR} cls="svB"/>
             <StatBadge label="Best Month" value={data.stats.bestMonth ? `${MONTHS[data.stats.bestMonth.month-1]} (${data.stats.bestMonth.pnl >= 0 ? '+' : ''}${data.stats.bestMonth.pnl}%)` : '—'} cls={data.stats.bestMonth && data.stats.bestMonth.pnl > 0 ? 'rp' : ''}/>
             <StatBadge label="Worst Month" value={data.stats.worstMonth ? `${MONTHS[data.stats.worstMonth.month-1]} (${data.stats.worstMonth.pnl >= 0 ? '+' : ''}${data.stats.worstMonth.pnl}%)` : '—'} cls={data.stats.worstMonth && data.stats.worstMonth.pnl < 0 ? 'rn' : ''}/>
+            
+            {data.stats.modelStats && data.stats.modelStats.map(m => (
+              <ModelStatBadge key={m.name} model={m} />
+            ))}
           </div>
 
           <div className="card" style={{padding:24}}>
@@ -240,7 +291,7 @@ export function YearlyReports() {
           <div className="card" style={{padding:0,overflow:'hidden'}}>
             <div className="tbl-wrap">
               <table className="tbl">
-                <thead><tr><th>Date</th><th>Pair</th>{mode === 'practice' && <th>Session</th>}<th>Model</th>{mode !== 'practice' && <th>Grade</th>}<th>Dir</th><th>Risk</th><th>Result</th><th>R:R</th><th>PNL</th></tr></thead>
+                <thead><tr><th>Date</th><th>Pair</th>{mode === 'practice' && <th>Session</th>}<th>Model</th>{mode !== 'practice' && <th>Grade</th>}<th>Dir</th><th>Risk</th><th>Result</th><th style={{textAlign:'center'}}>R:R</th><th>PNL</th></tr></thead>
                 <tbody>
                   {data.trades.map(t=>(
                     <tr key={t.id} className={t.status === 'final' ? 'tr-final' : ''}>
@@ -276,7 +327,7 @@ export function YearlyReports() {
                       {mode !== 'practice' && <td><span className={`pill ${t.grade==='A+'?'pAp':t.grade==='A'?'pA':t.grade==='B'?'pB':t.grade==='C'?'pC':'pLow'}`}>{t.grade}</span></td>}
                       <td>{t.direction}</td><td>{t.risk_percent}%</td>
                       <td>{t.result?<span className={`pill ${t.result==='Win'?'pWin':t.result==='Loss'?'pLoss':'pBE'}`}>{t.result}</span>:'—'}</td>
-                      <td className="mono">{t.r_multiple?`${parseFloat(t.r_multiple).toFixed(2)}R`:'—'}</td>
+                      <td style={{textAlign:'center'}} className="mono">{t.r_multiple != null ? (parseFloat(t.r_multiple) === 0 ? '0:00R' : `${parseFloat(t.r_multiple) > 0 ? '+' : ''}${parseFloat(t.r_multiple).toFixed(2)}R`) : '—'}</td>
                       <td className={t.pnl_percentage>0?'rp':t.pnl_percentage<0?'rn':'mono'}>{t.pnl_percentage!=null?`${t.pnl_percentage>=0?'+':''}${parseFloat(t.pnl_percentage).toFixed(2)}%`:'—'}</td>
                     </tr>
                   ))}

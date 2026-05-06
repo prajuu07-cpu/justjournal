@@ -31,11 +31,7 @@ const WEIGHT_COLORS = {
   25: { color: '#7E22CE', bg: '#FAF5FF', rgb: '126, 34, 206' },  // Purple
 };
 const DEFAULT_COLOR = { color: '#4F46E5', bg: '#EEF2FF', rgb: '79, 70, 229' };
-
-const MODEL_THEMES = {
-  'Model 1': { wBg: '#FDF4FF', wBorder: '#E9D5FF', wText: '#7E22CE', wUl: '#9333EA' },
-  'Model 2': { wBg: '#EEF2FF', wBorder: '#C7D2FE', wText: '#4F46E5', wUl: '#6366F1' }
-};
+const DEFAULT_THEME = { wBg: '#EEF2FF', wBorder: '#C7D2FE', wText: '#4F46E5', wUl: '#6366F1' };
 
 function calcScore(cl, items) { 
   return items.reduce((s,i) => s + (cl[i.key] ? (i.weight || 0) : 0), 0); 
@@ -75,7 +71,7 @@ export default function NewTrade({ editTrade, onDone }) {
   const [model,  setModel]  = useState(() => {
     if (editTrade?.model) return editTrade.model;
     if (mode === 'practice') return 'Practice';
-    return 'Model 1';
+    return ''; // Default to empty, useEffect will pick first available or show empty state
   });
   const [pair,   setPair]   = useState(() => editTrade?.pair || (mode === 'practice' && !isEdit ? practiceDefaults.pair : ''));
   const [date,   setDate]   = useState(() => editTrade?.date || (mode === 'practice' && !isEdit && practiceDefaults.date ? practiceDefaults.date : new Date().toISOString().slice(0,10)));
@@ -96,18 +92,23 @@ export default function NewTrade({ editTrade, onDone }) {
 
   // Reset model if it's not valid for the current mode on mode switch
   useEffect(() => {
-    if (isEdit) return; // Don't reset if we are editing an existing trade
+    if (isEdit) return;
     if (mode === 'practice') {
       setModel('Practice');
     } else {
-      // For JustChill, default back to Model 1 if the current model is not found in JustChill list
+      // In JustChill, if current model is not a custom model for this mode, reset it
       const isCustomInMode = customModels.some(m => m.name === model && (m.mode || 'justchill') === 'justchill');
-      const isBuiltin = model === 'Model 1' || model === 'Model 2';
-      if (!isBuiltin && !isCustomInMode) {
-        setModel('Model 1');
+      if (!isCustomInMode) {
+        // Pick first available custom model or set to empty
+        const activeCustom = customModels.filter(m => (m.mode || 'justchill') === 'justchill');
+        if (activeCustom.length > 0) {
+          setModel(activeCustom[0].name);
+        } else {
+          setModel('');
+        }
       }
     }
-  }, [mode]);
+  }, [mode, customModels]);
 
 
 
@@ -143,7 +144,7 @@ export default function NewTrade({ editTrade, onDone }) {
     return [];
   }, [model, customModels]);
 
-  const theme = MODEL_THEMES[model] || MODEL_THEMES['Model 1'];
+  const theme = DEFAULT_THEME; // Fallback, but dynamicTheme usually handles this
 
   const score   = useMemo(()=>calcScore(cl, activeItems),[cl, activeItems]);
   const grade   = mode === 'practice' ? manualGrade : calcGrade(score);
@@ -172,6 +173,7 @@ export default function NewTrade({ editTrade, onDone }) {
 
     setBusy(true);
     try {
+      const selectedModelObj = customModels.find(m => m.name === model && (m.mode || 'justchill') === mode);
       const payload = { 
         pair: pair.toUpperCase(), 
         date, 
@@ -179,6 +181,7 @@ export default function NewTrade({ editTrade, onDone }) {
         direction: dir, 
         risk_percent: rp, 
         model: model, 
+        model_id: selectedModelObj ? (selectedModelObj._id || selectedModelObj.id) : null,
         checklist: isPractice ? {} : cl, 
         notes, 
         status: asFinal ? 'final' : 'draft', 
@@ -208,31 +211,14 @@ export default function NewTrade({ editTrade, onDone }) {
     if (window.confirm(`Delete model "${modelName}"? This will move it to the Bin.`)) {
       setBusy(true);
       try {
-        if (modelName === 'Model 1' || modelName === 'Model 2') {
-          // Robustly merge hidden and binned arrays
-          const hidden = Array.from(new Set([...(userSettings.hidden_models || []), modelName]));
-          const binned = Array.from(new Set([...(userSettings.binned_models || []), modelName]));
-          
-          const ok = await updateSettings({ 
-            ...userSettings, 
-            hidden_models: hidden, 
-            binned_models: binned 
-          });
-          
-          if (ok) {
-            const nextModel = mode === 'practice' ? 'Practice' : (modelName === 'Model 1' ? 'Model 2' : 'Model 1');
-            setModel(nextModel);
-          }
-        } else {
-          const custom = customModels.find(m => m.name === modelName);
-          if (!custom) {
-            alert("Model not found in custom list.");
-            return;
-          }
+        // Check if there is a custom model with this name
+        const custom = customModels.find(m => m.name.toLowerCase() === modelName.toLowerCase());
+        
+        if (custom) {
+          // It's a custom model, delete it from DB
           const ok = await deleteModel(custom._id || custom.id);
-          if (ok) {
-            setModel(mode === 'practice' ? 'Practice' : 'Model 1');
-          }
+        } else {
+          alert("Model not found.");
         }
       } catch (err) {
         console.error("Deletion failed", err);
@@ -261,10 +247,12 @@ export default function NewTrade({ editTrade, onDone }) {
     if (mode === 'practice') {
       list = [{ name: 'Practice' }, ...activeCustom];
     } else {
-      list = [{ name: 'Model 1' }, { name: 'Model 2' }, ...activeCustom];
+      list = [...activeCustom];
     }
     if (model && !list.find(m => m.name === model)) {
-      list.push({ name: model, isHistorical: true });
+      if (isEdit) {
+        list.push({ name: model, isHistorical: true });
+      }
     }
     const hidden = userSettings.hidden_models || [];
     const filtered = list.filter(m => {
@@ -291,6 +279,17 @@ export default function NewTrade({ editTrade, onDone }) {
 
   // The rendered list — uses live drag order when dragging, otherwise modelBadges
   const displayBadges = orderedBadges || modelBadges;
+
+  // Auto-select first available model if current model is hidden/removed
+  useEffect(() => {
+    if (!isEdit && mode === 'justchill') {
+      if (displayBadges.length === 0) {
+        if (model !== '') setModel('');
+      } else if (!displayBadges.find(m => m.name === model)) {
+        setModel(displayBadges[0].name);
+      }
+    }
+  }, [displayBadges, model, isEdit, mode]);
 
   const onDragStart = (e, idx) => {
     setDragSrcIdx(idx);
@@ -405,7 +404,7 @@ export default function NewTrade({ editTrade, onDone }) {
         wUl: badge.color.text
       };
     }
-    return MODEL_THEMES[model] || MODEL_THEMES['Model 1'];
+    return DEFAULT_THEME;
   }, [model, modelBadges]);
 
   return (
@@ -457,6 +456,11 @@ export default function NewTrade({ editTrade, onDone }) {
         <div className="form-sec">Model</div>
         <div className="field" style={{marginBottom: '0.5rem'}}>
           <div style={{display:'flex', gap: '8px', alignItems: 'center', maxWidth: '100%', overflowX: 'auto', paddingBottom: '8px'}}>
+            {displayBadges.length === 0 && mode === 'justchill' && (
+              <div style={{color: '#64748b', fontSize: '0.85rem', padding: '6px 0'}}>
+                No models available. Please add models from Practice mode.
+              </div>
+            )}
             <div
               className="model-sel"
               style={{padding:0, margin: 0, gap: '8px', background: 'transparent', border:'none', flexWrap: 'nowrap'}}
@@ -553,116 +557,117 @@ export default function NewTrade({ editTrade, onDone }) {
         </div>
       </div>
 
-      <div className="card">
-        <div className="form-sec">Trade Details</div>
-        <div className="g2">
-          <div className="field"><label>Pair *</label><input value={pair} onChange={e=>setPair(e.target.value.toUpperCase())} placeholder="EURUSD"/></div>
-          <div className="field"><label>Date *</label><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
-          <div className="field"><label>Direction</label>
-            <select value={dir} onChange={e=>setDir(e.target.value)}><option>Buy</option><option>Sell</option></select>
-          </div>
-          <div className="field"><label>Risk % *</label><input type="number" value={risk} onChange={e=>setRisk(e.target.value)} placeholder="1.0" min="0.01" max="5" step="0.01"/></div>
-          {mode === 'practice' && (
-            <div className="field">
-              <div style={{display:'flex', gap: 12}}>
-                <div style={{flex: 2}}>
-                  <label>Session</label>
-                  <input list="session-opts" value={session} onChange={e=>setSession(e.target.value)} placeholder="Select or type..." autoComplete="off"/>
+      {(mode === 'practice' || displayBadges.length > 0) && (
+        <>
+          <div className="card">
+            <div className="form-sec">Trade Details</div>
+            <div className="g2">
+              <div className="field"><label>Pair *</label><input value={pair} onChange={e=>setPair(e.target.value.toUpperCase())} placeholder="EURUSD"/></div>
+              <div className="field"><label>Date *</label><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
+              <div className="field"><label>Direction</label>
+                <select value={dir} onChange={e=>setDir(e.target.value)}><option>Buy</option><option>Sell</option></select>
+              </div>
+              <div className="field"><label>Risk % *</label><input type="number" value={risk} onChange={e=>setRisk(e.target.value)} placeholder="1.0" min="0.01" max="5" step="0.01"/></div>
+              {mode === 'practice' && (
+                <div className="field">
+                  <div style={{display:'flex', gap: 12}}>
+                    <div style={{flex: 2}}>
+                      <label>Session</label>
+                      <input list="session-opts" value={session} onChange={e=>setSession(e.target.value)} placeholder="Select or type..." autoComplete="off"/>
+                    </div>
+                    <div style={{flex: 1}}>
+                      <label>Grade *</label>
+                      <select value={manualGrade} onChange={e => setManualGrade(e.target.value)} className="fsel" style={{width: '100%', height: '42px'}}>
+                        <option value="">Select</option>
+                        {['A+', 'A', 'B', 'C'].map(g => <option key={g} value={g}>{g}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <datalist id="session-opts">
+                    <option value="London"/>
+                    <option value="New York"/>
+                    <option value="Asian"/>
+                  </datalist>
                 </div>
-                <div style={{flex: 1}}>
-                  <label>Grade *</label>
-                  <select value={manualGrade} onChange={e => setManualGrade(e.target.value)} className="fsel" style={{width: '100%', height: '42px'}}>
-                    <option value="">Select</option>
-                    {['A+', 'A', 'B', 'C'].map(g => <option key={g} value={g}>{g}</option>)}
-                  </select>
+              )}
+            </div>
+          </div>
+
+          {mode !== 'practice' && model && (
+            <div className="card">
+              <div className="form-sec">Checklist — {model}</div>
+              {activeItems.map((item)=>{
+                const col = WEIGHT_COLORS[item.weight] || DEFAULT_COLOR;
+                return (
+                  <div key={item.key} className={`ci${cl[item.key]?' on':''}`} onClick={()=>toggle(item.key)} 
+                       style={{'--ici': col.color, '--ibg': col.bg, '--irgb': col.rgb, display:'flex', flexDirection:'column', alignItems:'flex-start', padding:'12px'}}>
+                    <div style={{display:'flex', alignItems:'center', width:'100%', gap:10}}>
+                      <div className="ci-box">{cl[item.key]&&<svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4.5l3.5 3.5L11 1" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div>
+                      <span className="ci-lbl">{item.label}</span>
+                      <span className="ci-pts">{Math.round(item.weight)}pts</span>
+                    </div>
+                  </div>
+                );
+              })}
+              
+
+              <div className="sc-blk" style={{padding: '20px', borderRadius: '16px'}}>
+                <div className="sc-label" style={{marginBottom: '12px', fontSize: '0.9rem', letterSpacing: '0.05em'}}>{model} · MODEL SCORE</div>
+                
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom: '16px'}}>
+                  <div>
+                    <div style={{fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4}}>Total Points</div>
+                    <div className="sc-n" style={{color:barColor, fontSize: '2.5rem', textAlign: 'left', lineHeight: 1, fontWeight: 900}}>{score}</div>
+                  </div>
+                  
+                  <div style={{textAlign: 'right'}}>
+                    <div style={{fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4}}>Grade</div>
+                    <div style={{
+                      background: barColor + '15', 
+                      color: barColor,
+                      border: `1.5px solid ${barColor}44`,
+                      padding: '6px 20px', 
+                      borderRadius: '12px',
+                      fontSize: '1.5rem',
+                      fontWeight: 900,
+                      boxShadow: `0 4px 12px ${barColor}15`
+                    }}>
+                      {grade}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="sc-bg" style={{height: '10px', borderRadius: '5px', background: '#f1f5f9', overflow:'hidden'}}>
+                  <div className="sc-fill" style={{
+                    width:`${Math.min(score, 100)}%`,
+                    height: '100%',
+                    background:`linear-gradient(90deg, ${barColor}ee, ${barColor})`,
+                    boxShadow: `0 0 10px ${barColor}44`,
+                    transition: 'width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                  }}/>
                 </div>
               </div>
-              <datalist id="session-opts">
-                <option value="London"/>
-                <option value="New York"/>
-                <option value="Asian"/>
-              </datalist>
             </div>
           )}
-        </div>
-      </div>
 
-      {mode !== 'practice' && (
-        <div className="card">
-          <div className="form-sec">Checklist — {model}</div>
-          {activeItems.map((item)=>{
-            const col = WEIGHT_COLORS[item.weight] || DEFAULT_COLOR;
-            return (
-              <div key={item.key} className={`ci${cl[item.key]?' on':''}`} onClick={()=>toggle(item.key)} 
-                   style={{'--ici': col.color, '--ibg': col.bg, '--irgb': col.rgb, display:'flex', flexDirection:'column', alignItems:'flex-start', padding:'12px'}}>
-                <div style={{display:'flex', alignItems:'center', width:'100%', gap:10}}>
-                  <div className="ci-box">{cl[item.key]&&<svg width="12" height="9" viewBox="0 0 12 9" fill="none"><path d="M1 4.5l3.5 3.5L11 1" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}</div>
-                  <span className="ci-lbl">{item.label}</span>
-                  <span className="ci-pts">{Math.round(item.weight)}pts</span>
-                </div>
+          <div className="card">
+            <div className="form-sec">Result (optional — add after trade closes)</div>
+            <div className="g2">
+              <div className="field"><label>Outcome</label>
+                <select value={result} onChange={e=>setResult(e.target.value)}>
+                  <option value="">None</option><option>Win</option><option>Loss</option><option>Breakeven</option>
+                </select>
               </div>
-            );
-          })}
-          
-
-
-          {/* Removed Required before Final box */}
-
-          <div className="sc-blk" style={{padding: '20px', borderRadius: '16px'}}>
-            <div className="sc-label" style={{marginBottom: '12px', fontSize: '0.9rem', letterSpacing: '0.05em'}}>{model} · MODEL SCORE</div>
-            
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom: '16px'}}>
-              <div>
-                <div style={{fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4}}>Total Points</div>
-                <div className="sc-n" style={{color:barColor, fontSize: '2.5rem', textAlign: 'left', lineHeight: 1, fontWeight: 900}}>{score}</div>
-              </div>
-              
-              <div style={{textAlign: 'right'}}>
-                <div style={{fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4}}>Grade</div>
-                <div style={{
-                  background: barColor + '15', 
-                  color: barColor,
-                  border: `1.5px solid ${barColor}44`,
-                  padding: '6px 20px', 
-                  borderRadius: '12px',
-                  fontSize: '1.5rem',
-                  fontWeight: 900,
-                  boxShadow: `0 4px 12px ${barColor}15`
-                }}>
-                  {grade}
-                </div>
-              </div>
-            </div>
-
-            <div className="sc-bg" style={{height: '10px', borderRadius: '5px', background: '#f1f5f9', overflow:'hidden'}}>
-              <div className="sc-fill" style={{
-                width:`${Math.min(score, 100)}%`,
-                height: '100%',
-                background:`linear-gradient(90deg, ${barColor}ee, ${barColor})`,
-                boxShadow: `0 0 10px ${barColor}44`,
-                transition: 'width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
-              }}/>
+              {result==='Win'&&<div className="field"><label>R Multiple</label><input type="number" value={rMult} onChange={e=>setRMult(e.target.value)} placeholder="2.5" min="0.01" step="0.01"/></div>}
             </div>
           </div>
-        </div>
+
+          <div className="card">
+            <div className="form-sec">Notes</div>
+            <div className="field"><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3} placeholder="Optional notes…" style={{resize:'vertical'}}/></div>
+          </div>
+        </>
       )}
-
-      <div className="card">
-        <div className="form-sec">Result (optional — add after trade closes)</div>
-        <div className="g2">
-          <div className="field"><label>Outcome</label>
-            <select value={result} onChange={e=>setResult(e.target.value)}>
-              <option value="">None</option><option>Win</option><option>Loss</option><option>Breakeven</option>
-            </select>
-          </div>
-          {result==='Win'&&<div className="field"><label>R Multiple</label><input type="number" value={rMult} onChange={e=>setRMult(e.target.value)} placeholder="2.5" min="0.01" step="0.01"/></div>}
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="form-sec">Notes</div>
-        <div className="field"><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3} placeholder="Optional notes…" style={{resize:'vertical'}}/></div>
-      </div>
 
       {model && model !== 'Practice' && !modelBadges.find(m => m.name === model)?.isHistorical && (
         <div style={{marginTop: '32px', textAlign: 'center', paddingBottom: '20px'}}>

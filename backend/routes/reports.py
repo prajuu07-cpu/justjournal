@@ -128,6 +128,7 @@ def dashboard():
         "Breakeven": sum(1 for t in final_trades if t["result"] == "Breakeven"),
     }
 
+
     return jsonify(
         totalTrades=total_trades,
         finalTrades=final_count,

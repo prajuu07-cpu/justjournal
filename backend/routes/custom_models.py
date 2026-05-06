@@ -97,21 +97,28 @@ def create_custom_model():
     hidden_lower = [h.lower() for h in hidden_models]
     binned_lower = [b.lower() for b in binned_models]
 
-    # Case-insensitive uniqueness check against built-in and existing custom models
-    name_lower = name.lower()
-    # Ensure uniqueness across active (non-deleted) custom models in the same mode
-    # Use $expr with $toLower for robust case-insensitive matching
-    existing_model = db.custom_models.find_one({
-        "user_id": uid,
-        "mode": model_mode,
-        "is_deleted": {"$ne": True},
-        "$expr": {
-            "$eq": [ { "$toLower": "$name" }, name.lower() ]
-        }
-    })
+    # Removed name uniqueness check to allow multiple instances of the same name.
     
-    if existing_model:
-        return jsonify(message="MODEL_EXISTS", error="MODEL_EXISTS"), 400
+    # Get colors of all currently active (non-deleted) models to ensure uniqueness
+    active_models = db.custom_models.find({"user_id": uid, "is_deleted": {"$ne": True}})
+    used_colors = [m.get("color") for m in active_models if m.get("color")]
+    
+    # Filter out colors already in use
+    available_colors = [c for c in MODEL_COLORS if c not in used_colors]
+    
+    if not available_colors:
+        # If all colors are used, we can't guarantee uniqueness across ALL models, 
+        # so just pick one at random or reuse the oldest used color.
+        assigned_color = random.choice(MODEL_COLORS)
+    else:
+        assigned_color = random.choice(available_colors)
+
+    # Special handling for "Model 3" name for legacy reasons if desired, 
+    # but the user requested distinct colors even for identical names.
+    if name.lower() == "model 3" and assigned_color not in used_colors:
+        # Keep pink for Model 3 if it's available
+        assigned_color = { "bg": "#FDF2F8", "text": "#DB2777", "border": "#FCE7F3" }
+
     new_model = {
         "user_id": uid,
         "name": name,
@@ -119,8 +126,9 @@ def create_custom_model():
         "notes": notes,
         "mode": model_mode,
         "createdFrom": created_from,
-        "color": { "bg": "#FDF2F8", "text": "#DB2777", "border": "#FCE7F3" } if name.lower() == "model 3" else random.choice(MODEL_COLORS),
-        "created_at": _now_iso()
+        "color": assigned_color,
+        "created_at": _now_iso(),
+        "is_deleted": False
     }
     
     result = db.custom_models.insert_one(new_model)

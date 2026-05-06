@@ -20,7 +20,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
 
 from db import get_db
-from utils import calculate_avg_rr, get_mode
+from utils import calculate_avg_rr, get_mode, get_model_color
 
 export_bp = Blueprint("export", __name__)
 
@@ -99,6 +99,16 @@ def _sf(v):
 def _p(txt, style=None):
     return Paragraph(str(txt) if txt is not None else "-", style or S_CELL)
 
+def _frr(rr):
+    """Formats RR value for PDF: +1.50R, -1.00R, or 0:00R."""
+    if rr is None or rr == "-" or rr == "—" or rr == "N/A": return "-"
+    try:
+        val = float(rr)
+        if val == 0: return "0:00R"
+        return f"{'+' if val > 0 else ''}{val:.2f}R"
+    except:
+        return str(rr)
+
 
 def _fmt_pnl(v):
     if v is None:
@@ -140,6 +150,65 @@ def _stat_box(label, value, val_color, col_w):
             ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ]),
     )
+
+
+def _model_stat_box(model, col_w):
+    """Renders a model stat box for PDF export."""
+    wr = model.get("winRate", 0)
+    pnl = model.get("netPNL", 0)
+    rr = model.get("rr", "N/A")
+    
+    wr_c = C_WIN if wr >= 50 else C_LOSS
+    pnl_c = C_WIN if pnl > 0 else (C_LOSS if pnl < 0 else C_DARK)
+    
+    # Dynamic colors
+    accent_c = colors.HexColor(model["color"]["text"]) if model.get("color") else C_INDIGO
+    bg_c = colors.HexColor(model["color"]["bg"]) if model.get("color") else C_CARD
+
+    # Internal grid for model metrics
+    data = [
+        [_p("Trades", S_STAT_L), _p("Win Rate", S_STAT_L)],
+        [_p(str(model.get("trades", 0)), S_CELL_B), _p(f"{wr}%", _sv_small(wr_c))],
+        [_p("Net PnL", S_STAT_L), _p("RR", S_STAT_L)],
+        [_p(f"{'+' if pnl >= 0 else ''}{pnl}%", _sv_small(pnl_c)), _p(_frr(model.get("rr")), _sv_small(accent_c))]
+    ]
+    
+    inner_table = Table(
+        data, 
+        colWidths=[(col_w - 12*mm)/2, (col_w - 12*mm)/2],
+        style=TableStyle([
+            ("VALIGN", (0,0), (-1,-1), "TOP"),
+            ("LEFTPADDING", (0,0), (-1,-1), 0),
+            ("RIGHTPADDING", (0,0), (-1,-1), 0),
+            ("TOPPADDING", (0,0), (-1,-1), 1),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 1),
+        ])
+    )
+
+    return Table(
+        [[_p(model.get("name", "Unknown"), ParagraphStyle(f"ep_mname_{model.get('name')}", parent=S_CELL_B, textColor=accent_c))], [inner_table]],
+        colWidths=[col_w - 4 * mm],
+        style=TableStyle([
+            ("BACKGROUND",    (0, 0), (-1, -1), bg_c),
+            ("BOX",           (0, 0), (-1, -1), 0.5, C_BORDER),
+            ("LINEABOVE",     (0, 1), (-1, 1), 0.5, C_BORDER),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 6),
+            ("TOPPADDING",    (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("LINEBEFORE",    (0, 0), (0, -1), 4, accent_c), # Accent left border
+        ]),
+    )
+
+_SV_SMALL_STYLES: dict = {}
+def _sv_small(color_val):
+    key = color_val.hexval()
+    if key not in _SV_SMALL_STYLES:
+        _SV_SMALL_STYLES[key] = ParagraphStyle(
+            f"ep_sv_s_{key}", fontName="Helvetica-Bold",
+            fontSize=10, textColor=color_val, leading=12,
+        )
+    return _SV_SMALL_STYLES[key]
 
 
 # ── Daily PnL Calendar grid ───────────────────────────────────────────────────
@@ -281,11 +350,23 @@ def _build_month_pdf(username: str, year: int, month: int,
         ],
         [
             _stat_box("Net PNL",         _pf(npnl, "%"),                           npnl_c,     col_w),
-            _stat_box("Avg RR",          _pf(s.get("avgRR")),                      C_INDIGO,   col_w),
+            _stat_box("Overall RR",      str(s.get("overallRR", "N/A")),            C_INDIGO,   col_w),
             _stat_box("Max Loss Streak", str(s.get("maxLossStreak", 0)),            C_LOSS,     col_w),
             "",
         ],
     ]
+
+    # Add dynamic model boxes
+    model_stats = s.get("modelStats", [])
+    for i in range(0, len(model_stats), 4):
+        m_row = []
+        for j in range(4):
+            if i + j < len(model_stats):
+                m_row.append(_model_stat_box(model_stats[i + j], col_w))
+            else:
+                m_row.append("")
+        stat_rows.append(m_row)
+
     story.append(Table(
         stat_rows, colWidths=[col_w] * 4,
         style=TableStyle([
@@ -330,7 +411,7 @@ def _build_month_pdf(username: str, year: int, month: int,
             
             row.extend([
                 _p(t.get("result") or "-"),
-                _p(f"{rr:.2f}R" if rr is not None else "-", S_MONO),
+                _p(_frr(rr), S_MONO),
                 _p(_fmt_pnl(pnl), S_MONO),
             ])
             t_rows.append(row)
@@ -428,11 +509,23 @@ def _build_year_pdf(username: str, year: int,
         ],
         [
             _stat_box("Net PNL",      _pf(npnl, "%"),                           npnl_c,    col_w),
-            _stat_box("Avg RR",       _pf(s.get("avgRR")),                      C_INDIGO,  col_w),
+            _stat_box("Overall RR",   str(s.get("overallRR", "N/A")),             C_INDIGO,  col_w),
             _stat_box("Best Month",   best_lbl,                                  best_c,    col_w),
             _stat_box("Worst Month",  worst_lbl,                                 worst_c,   col_w),
         ],
     ]
+
+    # Add dynamic model boxes
+    model_stats = s.get("modelStats", [])
+    for i in range(0, len(model_stats), 4):
+        m_row = []
+        for j in range(4):
+            if i + j < len(model_stats):
+                m_row.append(_model_stat_box(model_stats[i + j], col_w))
+            else:
+                m_row.append("")
+        stat_rows.append(m_row)
+
     story.append(Table(
         stat_rows, colWidths=[col_w] * 4,
         style=TableStyle([
@@ -479,7 +572,7 @@ def _build_year_pdf(username: str, year: int,
                 
             row.extend([
                 _p(t.get("result") or "-"),
-                _p(f"{rr:.2f}R" if rr is not None else "-", S_MONO),
+                _p(_frr(rr), S_MONO),
                 _p(_fmt_pnl(pnl), S_MONO),
             ])
             t_rows.append(row)
@@ -581,11 +674,29 @@ def export_month_pdf(year, month):
         daily_breakdown[d_str]["net_pnl"]     = round(daily_breakdown[d_str]["net_pnl"] + pnl_v, 4)
         daily_breakdown[d_str]["trade_count"] += 1
 
+    # Dynamic Model Stats calculation
+    m_stats_map = {}
+    for t in trades:
+        m = t.get("model") or "Unknown"
+        if m not in m_stats_map:
+            m_stats_map[m] = {"trades": 0, "wins": 0, "pnl": 0.0, "reward": 0.0}
+        m_stats_map[m]["trades"] += 1
+        if t.get("result") == "Win":
+            m_stats_map[m]["wins"] += 1
+        m_stats_map[m]["pnl"] += _sf(t.get("pnl_percentage"))
+        pass  # reward aggregated via universal engine below
+
+    from utils import model_stats_from_trades, trade_rr
+    model_stats = model_stats_from_trades(trades, uid)
+    _orr = round(sum(trade_rr(t) for t in trades), 2) if total else 0
+    overall_rr_str = ('+' if _orr > 0 else '') + str(_orr) + 'R' if total else 'N/A'
+
     stats = dict(
         totalTrades=total, wins=wins, losses=losses,
         winRate=win_rate, netPNL=net_pnl,
         maxLossStreak=max_streak,
-        avgRR=avg_rr,
+        overallRR=overall_rr_str,
+        modelStats=model_stats,
         dailyBreakdown=daily_breakdown
     )
 
@@ -661,11 +772,29 @@ def export_year_pdf(year):
     # Win-Only Avg RR for Header (using Isolated Compute Layer)
     avg_rr = calculate_avg_rr(trades)
 
+    # Dynamic Model Stats calculation
+    m_stats_map = {}
+    for t in trades:
+        m = t.get("model") or "Unknown"
+        if m not in m_stats_map:
+            m_stats_map[m] = {"trades": 0, "wins": 0, "pnl": 0.0, "reward": 0.0}
+        m_stats_map[m]["trades"] += 1
+        if t.get("result") == "Win":
+            m_stats_map[m]["wins"] += 1
+        m_stats_map[m]["pnl"] += _sf(t.get("pnl_percentage"))
+        pass  # reward aggregated via universal engine below
+
+    from utils import model_stats_from_trades, trade_rr
+    model_stats = model_stats_from_trades(trades, uid)
+    _orr = round(sum(trade_rr(t) for t in trades), 2) if total else 0
+    overall_rr_str = ('+' if _orr > 0 else '') + str(_orr) + 'R' if total else 'N/A'
+
     stats = dict(
         totalTrades=total, wins=wins, losses=losses,
         winRate=win_rate, netPNL=net_pnl,
         bestMonth=best_month, worstMonth=worst_month,
-        avgRR=avg_rr
+        overallRR=overall_rr_str,
+        modelStats=model_stats
     )
 
     pdf_bytes = _build_year_pdf(username, year, stats, trades, mb_arr, mode)

@@ -165,6 +165,10 @@ export default function ModelBuilder() {
                     type="number"
                     value={newItem.weight} 
                     onChange={e => setNewItem({...newItem, weight: e.target.value})} 
+                    onKeyDown={e => {
+                      if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault();
+                      if (e.key === 'Enter') addItem();
+                    }}
                     placeholder="pts"
                     style={{background: '#fff'}}
                   />

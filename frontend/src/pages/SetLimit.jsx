@@ -117,14 +117,14 @@ export default function SetLimit() {
 
       <div className="card">
         <div className="form-sec">Control Discipline</div>
-        <p style={{fontSize:'0.9rem', color:'#64748b', marginBottom: '1.5rem'}}>
+        <p style={{fontSize:'0.9rem', color:'var(--text)', marginBottom: '1.5rem', fontWeight: 500}}>
           Define your tolerance levels. The system will block new final trades in Journal mode once these limits are reached.
         </p>
 
         <div className="g2" style={{ marginBottom: '16px' }}>
           <div className={`field ${!weeklyEnabled ? 'disabled' : ''}`}>
             <div className="field-head">
-              <label>Weekly Trade Limit</label>
+              <label style={{color: 'var(--text)', fontWeight: 700}}>Weekly Trade Limit</label>
               <label className="switch">
                 <input 
                   type="checkbox" 
@@ -142,14 +142,14 @@ export default function SetLimit() {
               min="1"
               disabled={!weeklyEnabled}
             />
-            <small style={{display:'block', marginTop:4, color:'#94a3b8'}}>
+            <small style={{display:'block', marginTop:4, color:'#64748b'}}>
               Max number of trades allowed per week
             </small>
           </div>
 
           <div className={`field ${!weeklyLossEnabled ? 'disabled' : ''}`}>
             <div className="field-head">
-              <label>Weekly Loss Limit</label>
+              <label style={{color: 'var(--text)', fontWeight: 700}}>Weekly Loss Limit</label>
               <label className="switch">
                 <input 
                   type="checkbox" 
@@ -167,7 +167,7 @@ export default function SetLimit() {
               min="1"
               disabled={!weeklyLossEnabled}
             />
-            <small style={{display:'block', marginTop:4, color:'#94a3b8'}}>
+            <small style={{display:'block', marginTop:4, color:'#64748b'}}>
               Max number of losing trades allowed per week
             </small>
           </div>
@@ -176,7 +176,7 @@ export default function SetLimit() {
         <div className="g2">
           <div className={`field ${!monthlyEnabled ? 'disabled' : ''}`}>
             <div className="field-head">
-              <label>Monthly Loss Limit</label>
+              <label style={{color: 'var(--text)', fontWeight: 700}}>Monthly Loss Limit</label>
               <label className="switch">
                 <input 
                   type="checkbox" 

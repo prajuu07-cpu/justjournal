@@ -341,6 +341,16 @@ def _build_month_pdf(username: str, year: int, month: int,
     npnl_c = C_WIN if npnl > 0 else (C_LOSS if npnl < 0 else C_DARK)
 
 
+    orr_val = s.get("overallRR", "N/A")
+    orr_c   = C_DARK
+    if orr_val and orr_val != "N/A":
+        try:
+            # Handle +1.50R, -1.00R, 0:00R
+            clean_v = orr_val.replace('+', '').replace('R', '').replace(':', '.')
+            f_val = float(clean_v)
+            orr_c = C_WIN if f_val > 0 else (C_LOSS if f_val < 0 else C_DARK)
+        except: pass
+
     stat_rows = [
         [
             _stat_box("Total Trades",    str(s.get("totalTrades", 0)),              C_DARK,   col_w),
@@ -350,7 +360,7 @@ def _build_month_pdf(username: str, year: int, month: int,
         ],
         [
             _stat_box("Net PNL",         _pf(npnl, "%"),                           npnl_c,     col_w),
-            _stat_box("Overall RR",      str(s.get("overallRR", "N/A")),            C_INDIGO,   col_w),
+            _stat_box("Overall RR",      orr_val,                                   orr_c,      col_w),
             _stat_box("Max Loss Streak", str(s.get("maxLossStreak", 0)),            C_LOSS,     col_w),
             "",
         ],
@@ -390,10 +400,10 @@ def _build_month_pdf(username: str, year: int, month: int,
         
         if is_prac:
             t_headers = ["Date", "Pair", "Model", "Dir", "Risk%", "Result", "R:R", "PNL%"]
-            t_col_ws  = [22*mm, 27*mm, 25*mm, 12*mm, 14*mm, 16*mm, 14*mm, 20*mm]
+            t_col_ws  = [22*mm, 27*mm, 25*mm, 12*mm, 14*mm, 20*mm, 18*mm, 20*mm]
         else:
             t_headers = ["Date", "Pair", "Model", "Dir", "Risk%", "Grade", "Result", "R:R", "PNL%"]
-            t_col_ws  = [22*mm, 20*mm, 18*mm, 12*mm, 14*mm, 14*mm, 16*mm, 14*mm, 20*mm]
+            t_col_ws  = [22*mm, 18*mm, 18*mm, 12*mm, 14*mm, 14*mm, 20*mm, 18*mm, 20*mm]
             
         t_rows    = [[_p(h, S_HDR) for h in t_headers]]
         for t in trades:
@@ -428,8 +438,11 @@ def _build_month_pdf(username: str, year: int, month: int,
         ])
         
         res_idx = 5 if is_prac else 6
+        rr_idx  = 6 if is_prac else 7
         pnl_idx = 7 if is_prac else 8
         grd_idx = None if is_prac else 5
+        
+        ts.add("ALIGN", (rr_idx, 0), (rr_idx, -1), "CENTER")
         
         for i, t in enumerate(trades, 1):
             result = t.get("result")
@@ -500,6 +513,15 @@ def _build_year_pdf(username: str, year: int,
     best_c  = C_WIN if (best_m and best_m.get('pnl', 0) > 0) else C_DARK
     worst_c = C_LOSS if (worst_m and worst_m.get('pnl', 0) < 0) else C_DARK
 
+    orr_val = s.get("overallRR", "N/A")
+    orr_c   = C_DARK
+    if orr_val and orr_val != "N/A":
+        try:
+            clean_v = orr_val.replace('+', '').replace('R', '').replace(':', '.')
+            f_val = float(clean_v)
+            orr_c = C_WIN if f_val > 0 else (C_LOSS if f_val < 0 else C_DARK)
+        except: pass
+
     stat_rows = [
         [
             _stat_box("Total Trades", str(s.get("totalTrades", 0)),              C_DARK,   col_w),
@@ -509,7 +531,7 @@ def _build_year_pdf(username: str, year: int,
         ],
         [
             _stat_box("Net PNL",      _pf(npnl, "%"),                           npnl_c,    col_w),
-            _stat_box("Overall RR",   str(s.get("overallRR", "N/A")),             C_INDIGO,  col_w),
+            _stat_box("Overall RR",   orr_val,                                   orr_c,     col_w),
             _stat_box("Best Month",   best_lbl,                                  best_c,    col_w),
             _stat_box("Worst Month",  worst_lbl,                                 worst_c,   col_w),
         ],
@@ -551,10 +573,10 @@ def _build_year_pdf(username: str, year: int,
         
         if is_prac:
             t_headers = ["Date", "Pair", "Model", "Dir", "Risk%", "Result", "R:R", "PNL%"]
-            t_col_ws  = [22*mm, 27*mm, 25*mm, 12*mm, 14*mm, 16*mm, 14*mm, 20*mm]
+            t_col_ws  = [22*mm, 27*mm, 25*mm, 12*mm, 14*mm, 20*mm, 18*mm, 20*mm]
         else:
             t_headers = ["Date", "Pair", "Model", "Dir", "Risk%", "Grade", "Result", "R:R", "PNL%"]
-            t_col_ws  = [22*mm, 20*mm, 18*mm, 12*mm, 14*mm, 14*mm, 16*mm, 14*mm, 20*mm]
+            t_col_ws  = [22*mm, 18*mm, 18*mm, 12*mm, 14*mm, 14*mm, 20*mm, 18*mm, 20*mm]
             
         t_rows    = [[_p(h, S_HDR) for h in t_headers]]
         for t in trades:
@@ -589,8 +611,11 @@ def _build_year_pdf(username: str, year: int,
         ])
         
         res_idx = 5 if is_prac else 6
+        rr_idx  = 6 if is_prac else 7
         pnl_idx = 7 if is_prac else 8
         grd_idx = None if is_prac else 5
+        
+        ts.add("ALIGN", (rr_idx, 0), (rr_idx, -1), "CENTER")
         
         for i, t in enumerate(trades, 1):
             result = t.get("result")

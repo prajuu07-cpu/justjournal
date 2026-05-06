@@ -6,24 +6,24 @@ export default function SetLimit() {
   const { userSettings, updateSettings, mode } = useMode();
   const nav = useNavigate();
   
-  const [weekly, setWeekly] = useState(userSettings.weekly_limit || 2);
-  const [weeklyEnabled, setWeeklyEnabled] = useState(userSettings.weekly_limit_enabled ?? true);
-  const [weeklyLoss, setWeeklyLoss] = useState(userSettings.weekly_loss_limit || 2);
-  const [weeklyLossEnabled, setWeeklyLossEnabled] = useState(userSettings.weekly_loss_limit_enabled ?? true);
-  const [monthly, setMonthly] = useState(userSettings.monthly_loss_limit || 5);
-  const [monthlyEnabled, setMonthlyEnabled] = useState(userSettings.monthly_loss_limit_enabled ?? true);
+  const [weekly, setWeekly] = useState(userSettings.weekly_limit || '');
+  const [weeklyEnabled, setWeeklyEnabled] = useState(userSettings.weekly_limit_enabled ?? false);
+  const [weeklyLoss, setWeeklyLoss] = useState(userSettings.weekly_loss_limit || '');
+  const [weeklyLossEnabled, setWeeklyLossEnabled] = useState(userSettings.weekly_loss_limit_enabled ?? false);
+  const [monthly, setMonthly] = useState(userSettings.monthly_loss_limit || '');
+  const [monthlyEnabled, setMonthlyEnabled] = useState(userSettings.monthly_loss_limit_enabled ?? false);
 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
  
   useEffect(() => {
-    setWeekly(userSettings.weekly_limit ?? 2);
-    setWeeklyEnabled(userSettings.weekly_limit_enabled ?? true);
-    setWeeklyLoss(userSettings.weekly_loss_limit ?? 2);
-    setWeeklyLossEnabled(userSettings.weekly_loss_limit_enabled ?? true);
-    setMonthly(userSettings.monthly_loss_limit ?? 5);
-    setMonthlyEnabled(userSettings.monthly_loss_limit_enabled ?? true);
+    setWeekly(userSettings.weekly_limit || '');
+    setWeeklyEnabled(userSettings.weekly_limit_enabled ?? false);
+    setWeeklyLoss(userSettings.weekly_loss_limit || '');
+    setWeeklyLossEnabled(userSettings.weekly_loss_limit_enabled ?? false);
+    setMonthly(userSettings.monthly_loss_limit || '');
+    setMonthlyEnabled(userSettings.monthly_loss_limit_enabled ?? false);
   }, [userSettings]);
 
   const isValidPositiveInteger = (val) => {

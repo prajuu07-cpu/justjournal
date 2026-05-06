@@ -13,11 +13,11 @@ export const ModeProvider = ({ children }) => {
   const [practiceDefaults, setPracticeDefaults] = useState({ pair: '', risk: '', date: '' });
   const [customModels, setCustomModels] = useState([]);
   const [userSettings, setUserSettings] = useState({ 
-    weekly_limit: 2, 
+    weekly_limit: '', 
     weekly_limit_enabled: false,
-    weekly_loss_limit: 2,
+    weekly_loss_limit: '', 
     weekly_loss_limit_enabled: false,
-    monthly_loss_limit: 5, 
+    monthly_loss_limit: '', 
     monthly_loss_limit_enabled: false,
     hidden_models: [], 
     binned_models: [], 

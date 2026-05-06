@@ -16,11 +16,11 @@ def get_settings():
         settings = {}
         
     return jsonify({
-        "weekly_limit": settings.get("weekly_limit", 2),
+        "weekly_limit": settings.get("weekly_limit", ""),
         "weekly_limit_enabled": settings.get("weekly_limit_enabled", False),
-        "weekly_loss_limit": settings.get("weekly_loss_limit", 2),
+        "weekly_loss_limit": settings.get("weekly_loss_limit", ""),
         "weekly_loss_limit_enabled": settings.get("weekly_loss_limit_enabled", False),
-        "monthly_loss_limit": settings.get("monthly_loss_limit", 5),
+        "monthly_loss_limit": settings.get("monthly_loss_limit", ""),
         "monthly_loss_limit_enabled": settings.get("monthly_loss_limit_enabled", False),
         "hidden_models": settings.get("hidden_models", []),
         "binned_models": settings.get("binned_models", []),
@@ -46,15 +46,15 @@ def update_settings():
     existing = db.user_settings.find_one({"user_id": uid}) or {}
     
     if weekly_limit is None:
-        weekly_limit = existing.get("weekly_limit", 2)
+        weekly_limit = existing.get("weekly_limit", "")
     if weekly_limit_enabled is None:
         weekly_limit_enabled = existing.get("weekly_limit_enabled", False)
     if weekly_loss_limit is None:
-        weekly_loss_limit = existing.get("weekly_loss_limit", 2)
+        weekly_loss_limit = existing.get("weekly_loss_limit", "")
     if weekly_loss_limit_enabled is None:
         weekly_loss_limit_enabled = existing.get("weekly_loss_limit_enabled", False)
     if monthly_loss_limit is None:
-        monthly_loss_limit = existing.get("monthly_loss_limit", 5)
+        monthly_loss_limit = existing.get("monthly_loss_limit", "")
     if monthly_loss_limit_enabled is None:
         monthly_loss_limit_enabled = existing.get("monthly_loss_limit_enabled", False)
         

@@ -370,7 +370,7 @@ export default function Journal() {
                       {t.result
                         ? <span className={`pill ${t.result === 'Win' ? 'pWin' : t.result === 'Loss' ? 'pLoss' : 'pBE'}`}>{t.result}</span>
                         : t.status === 'final'
-                          ? <button className="btn btn-xs btn-ghost" onClick={() => setAddResult({ trade: t, result: '', rMult: '' })}>+ Result</button>
+                          ? <button className="btn btn-xs btn-ghost" onClick={() => { setErr(''); setAddResult({ trade: t, result: '', rMult: '' }); }}>+ Result</button>
                           : '—'}
                     </td>
                     <td>
@@ -434,8 +434,9 @@ export default function Journal() {
                   />
                 </div>
               )}
+              {err && <div className="err-box" style={{marginBottom: 12, padding: '8px 12px', fontSize: '0.85rem'}}>{err}</div>}
               <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-                <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setAddResult(null)}>Cancel</button>
+                <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setErr(''); setAddResult(null); }}>Cancel</button>
                 <button className="btn btn-primary" style={{ flex: 1 }} onClick={saveResult} disabled={!addResult.result}>Save</button>
               </div>
             </div>

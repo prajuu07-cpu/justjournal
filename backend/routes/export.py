@@ -165,12 +165,20 @@ def _model_stat_box(model, col_w):
     accent_c = colors.HexColor(model["color"]["text"]) if model.get("color") else C_INDIGO
     bg_c = colors.HexColor(model["color"]["bg"]) if model.get("color") else C_CARD
 
+    rr_str = _frr(rr)
+    rr_c = C_DARK
+    try:
+        clean_v = rr_str.replace('+', '').replace('R', '').replace(':', '.')
+        f_val = float(clean_v)
+        rr_c = C_WIN if f_val > 0 else (C_LOSS if f_val < 0 else C_DARK)
+    except: pass
+
     # Internal grid for model metrics
     data = [
         [_p("Trades", S_STAT_L), _p("Win Rate", S_STAT_L)],
         [_p(str(model.get("trades", 0)), S_CELL_B), _p(f"{wr}%", _sv_small(wr_c))],
         [_p("Net PnL", S_STAT_L), _p("RR", S_STAT_L)],
-        [_p(f"{'+' if pnl >= 0 else ''}{pnl}%", _sv_small(pnl_c)), _p(_frr(model.get("rr")), _sv_small(accent_c))]
+        [_p(f"{'+' if pnl >= 0 else ''}{pnl}%", _sv_small(pnl_c)), _p(rr_str, _sv_small(rr_c))]
     ]
     
     inner_table = Table(

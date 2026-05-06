@@ -7,7 +7,7 @@ load_dotenv("backend/.env")
 
 def cleanup():
     db = get_db()
-    usernames = ["test2", "test3"]
+    usernames = ["test", "test2", "test3"]
     
     for username in usernames:
         user = db.users.find_one({"username": username})

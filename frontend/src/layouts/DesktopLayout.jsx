@@ -39,7 +39,9 @@ export default function DesktopLayout() {
             <NavLink to="/settings" className={({isActive})=>isActive?'nav-item active':'nav-item'}>Set Limit</NavLink>
           )}
           <NavLink to={mode === 'practice' ? '/trade-bin' : '/bin'} className={({isActive})=>isActive?'nav-item active':'nav-item'}>Bin</NavLink>
-          <NavLink to="/change-password" className={({isActive})=>isActive?'nav-item active':'nav-item'}>Change Password</NavLink>
+          {mode === 'justchill' && (
+            <NavLink to="/change-password" className={({isActive})=>isActive?'nav-item active':'nav-item'}>Change Password</NavLink>
+          )}
         </nav>
         <div className="sidebar-foot">
           <div className="user-info">@{user?.username}</div>

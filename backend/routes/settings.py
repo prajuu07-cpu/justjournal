@@ -59,9 +59,9 @@ def update_settings():
         monthly_loss_limit_enabled = existing.get("monthly_loss_limit_enabled", False)
         
     try:
-        weekly_limit = int(weekly_limit)
-        weekly_loss_limit = int(weekly_loss_limit)
-        monthly_loss_limit = int(monthly_loss_limit)
+        weekly_limit = int(weekly_limit) if weekly_limit else 0
+        weekly_loss_limit = int(weekly_loss_limit) if weekly_loss_limit else 0
+        monthly_loss_limit = int(monthly_loss_limit) if monthly_loss_limit else 0
     except (ValueError, TypeError):
         return jsonify(error="Limits must be integers"), 400
 

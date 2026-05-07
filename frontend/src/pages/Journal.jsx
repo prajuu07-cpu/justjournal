@@ -89,9 +89,10 @@ export default function Journal() {
       load();
     } catch (ex) {
       const lt = ex.response?.data?.limitType;
+      const errorMsg = ex.response?.data?.error;
       if (lt) {
         setAddResult(null);
-        setLimitModal(lt);
+        setLimitModal({ type: lt, message: errorMsg });
       } else {
         setErr(ex.response?.data?.error || 'Failed to save result');
       }
@@ -138,27 +139,20 @@ export default function Journal() {
   return (
     <div className="page">
       {limitModal && (
-        <div className="lim-ov" onClick={()=>setLimitModal('')}>
+        <div className="lim-ov" onClick={()=>setLimitModal(null)}>
           <div className="lim-box" onClick={e=>e.stopPropagation()}>
             <div className="lim-top">
               <div className="lim-title">
-                {limitModal === 'weekly' ? 'Weekly Limit Reached' : 
-                 limitModal === 'weeklyLoss' ? 'Weekly Loss Limit Reached' : 
+                {limitModal.type === 'weekly' ? 'Weekly Limit Reached' : 
+                 limitModal.type === 'weeklyLoss' ? 'Weekly Loss Limit Reached' : 
                  'Monthly Loss Limit Reached'}
               </div>
             </div>
             <div className="lim-body">
               <div className="lim-msg">
-                {limitModal === 'weekly' 
-                  ? `You have reached ${userSettings.weekly_limit} trades this week. No more trades until next week.`
-                  : limitModal === 'weeklyLoss'
-                    ? `You have reached ${userSettings.weekly_loss_limit} losing trades this week. No more trades allowed this week.`
-                  : limitModal === 'monthly' 
-                    ? `You have reached ${userSettings.monthly_loss_limit} losing trades this month. Trading is blocked until next month.`
-                    : ''
-                }
+                {limitModal.message}
               </div>
-              <button className="lim-dismiss" onClick={()=>setLimitModal('')}>Got it</button>
+              <button className="lim-dismiss" onClick={()=>setLimitModal(null)}>Got it</button>
             </div>
           </div>
         </div>

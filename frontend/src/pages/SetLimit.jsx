@@ -1,32 +1,74 @@
 import { useState, useEffect } from 'react';
 import { useMode } from '../context/ModeContext';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 export default function SetLimit() {
-  const { userSettings, updateSettings, mode } = useMode();
+  const { mode, updateSettings } = useMode();
   const nav = useNavigate();
   
-  const [weekly, setWeekly] = useState(userSettings.weekly_limit || '');
-  const [weeklyEnabled, setWeeklyEnabled] = useState(userSettings.weekly_limit_enabled ?? false);
-  const [weeklyLoss, setWeeklyLoss] = useState(userSettings.weekly_loss_limit || '');
-  const [weeklyLossEnabled, setWeeklyLossEnabled] = useState(userSettings.weekly_loss_limit_enabled ?? false);
-  const [monthly, setMonthly] = useState(userSettings.monthly_loss_limit || '');
-  const [monthlyEnabled, setMonthlyEnabled] = useState(userSettings.monthly_loss_limit_enabled ?? false);
+  const [models, setModels] = useState([]);
+  const [selectedModel, setSelectedModel] = useState('');
+  const [loadingModels, setLoadingModels] = useState(true);
+  const [loadingLimits, setLoadingLimits] = useState(false);
+
+  const [weekly, setWeekly] = useState('');
+  const [weeklyEnabled, setWeeklyEnabled] = useState(false);
+  const [weeklyLoss, setWeeklyLoss] = useState('');
+  const [weeklyLossEnabled, setWeeklyLossEnabled] = useState(false);
+  const [monthly, setMonthly] = useState('');
+  const [monthlyEnabled, setMonthlyEnabled] = useState(false);
 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
- 
+
   useEffect(() => {
-    setWeekly(userSettings.weekly_limit || '');
-    setWeeklyEnabled(userSettings.weekly_limit_enabled ?? false);
-    setWeeklyLoss(userSettings.weekly_loss_limit || '');
-    setWeeklyLossEnabled(userSettings.weekly_loss_limit_enabled ?? false);
-    setMonthly(userSettings.monthly_loss_limit || '');
-    setMonthlyEnabled(userSettings.monthly_loss_limit_enabled ?? false);
-  }, [userSettings]);
+    fetchModels();
+  }, []);
+
+  const fetchModels = async () => {
+    try {
+      setLoadingModels(true);
+      const { data } = await api.get('/settings/models');
+      setModels(data.models || []);
+      if (data.models && data.models.length > 0) {
+        setSelectedModel(data.models[0]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch models", err);
+      setError("Failed to load models. Please try again.");
+    } finally {
+      setLoadingModels(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedModel) {
+      fetchLimits(selectedModel);
+    }
+  }, [selectedModel]);
+
+  const fetchLimits = async (modelName) => {
+    try {
+      setLoadingLimits(true);
+      const { data } = await api.get(`/settings?model=${encodeURIComponent(modelName)}`);
+      setWeekly(data.weekly_limit || '');
+      setWeeklyEnabled(data.weekly_limit_enabled ?? false);
+      setWeeklyLoss(data.weekly_loss_limit || '');
+      setWeeklyLossEnabled(data.weekly_loss_limit_enabled ?? false);
+      setMonthly(data.monthly_loss_limit || '');
+      setMonthlyEnabled(data.monthly_loss_limit_enabled ?? false);
+    } catch (err) {
+      console.error("Failed to fetch limits", err);
+      setError("Failed to load limits for selected model.");
+    } finally {
+      setLoadingLimits(false);
+    }
+  };
 
   const isValidPositiveInteger = (val) => {
+    if (val === '') return true; // Allow empty if disabled
     const num = Number(val);
     return Number.isInteger(num) && num > 0;
   };
@@ -34,6 +76,11 @@ export default function SetLimit() {
   const save = async () => {
     setError('');
     setMsg('');
+
+    if (!selectedModel) {
+      setError('Please select a model.');
+      return;
+    }
 
     // Only validate if enabled
     if (weeklyEnabled && !isValidPositiveInteger(weekly)) {
@@ -51,11 +98,12 @@ export default function SetLimit() {
 
     setBusy(true);
     const success = await updateSettings({
-      weekly_limit: parseInt(weekly, 10),
+      model: selectedModel,
+      weekly_limit: weekly !== '' ? parseInt(weekly, 10) : 0,
       weekly_limit_enabled: weeklyEnabled,
-      weekly_loss_limit: parseInt(weeklyLoss, 10),
+      weekly_loss_limit: weeklyLoss !== '' ? parseInt(weeklyLoss, 10) : 0,
       weekly_loss_limit_enabled: weeklyLossEnabled,
-      monthly_loss_limit: parseInt(monthly, 10),
+      monthly_loss_limit: monthly !== '' ? parseInt(monthly, 10) : 0,
       monthly_loss_limit_enabled: monthlyEnabled
     });
     
@@ -84,7 +132,9 @@ export default function SetLimit() {
     <div className="page">
       <div className="page-hd">
         <h1>Trading Limits</h1>
-        <button className="btn btn-ok" onClick={save} disabled={busy}>Save Limits</button>
+        {selectedModel && (
+          <button className="btn btn-ok" onClick={save} disabled={busy}>Save Limits</button>
+        )}
       </div>
 
       {msg && (
@@ -115,10 +165,59 @@ export default function SetLimit() {
         </div>
       )}
 
-      <div className="card">
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="form-sec">Select Model</div>
+        <div className="field">
+          <label style={{color: 'var(--text)', fontWeight: 700}}>Active Trading Model</label>
+          <div style={{ position: 'relative' }}>
+            <select 
+              value={selectedModel} 
+              onChange={e => setSelectedModel(e.target.value)}
+              disabled={loadingModels || models.length === 0}
+              className="fsel"
+              style={{ width: '100%', padding: '12px' }}
+            >
+              {loadingModels ? (
+                <option>Loading models...</option>
+              ) : models.length === 0 ? (
+                <option>No models available</option>
+              ) : (
+                models.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))
+              )}
+            </select>
+            {loadingModels && (
+              <div style={{ 
+                position: 'absolute', right: 40, top: '50%', transform: 'translateY(-50%)',
+                fontSize: '0.8rem', color: '#64748b' 
+              }}>
+                Fetching...
+              </div>
+            )}
+          </div>
+          {models.length === 0 && !loadingModels && (
+            <small style={{ color: '#ef4444', marginTop: 4, display: 'block' }}>
+              Add trades to your journal to see models here.
+            </small>
+          )}
+        </div>
+      </div>
+
+      {selectedModel && (
+        <div className={`card ${!selectedModel || loadingLimits ? 'disabled' : ''}`} style={{ position: 'relative' }}>
+          {loadingLimits && (
+            <div style={{
+              position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.6)', 
+              zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 12
+            }}>
+              <div className="loading">Loading limits...</div>
+            </div>
+          )}
         <div className="form-sec">Control Discipline</div>
         <p style={{fontSize:'0.9rem', color:'var(--text)', marginBottom: '1.5rem', fontWeight: 500}}>
-          Define your tolerance levels. The system will block new final trades in Journal mode once these limits are reached.
+          Define your tolerance levels for <strong>{selectedModel || 'selected model'}</strong>. The system will block new final trades in Journal mode once these limits are reached.
         </p>
 
         <div className="g2" style={{ marginBottom: '16px' }}>
@@ -199,7 +298,7 @@ export default function SetLimit() {
             </small>
           </div>
         </div>
-      </div>
+      )}
 
     </div>
   );

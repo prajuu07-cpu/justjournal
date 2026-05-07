@@ -3,25 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useMode } from '../context/ModeContext';
 
-const MODEL1_ITEMS = [
-  { key:'drawDailyTP',  label:'Draw Daily TP',                              weight:5,  required:true },
-  { key:'trigger',      label:'Daily Trigger Candle',                       weight:5,  required:true },
-  { key:'prevMS',       label:'Mark 4H or 2H Previous MS',                  weight:15, required:true },
-  { key:'sync2H',       label:'2H Timeframe Synch',                         weight:25, required:false },
-  { key:'priceReached', label:'Price Reached Previous MS',                  weight:20, required:true },
-  { key:'engulfing',    label:'Engulfing at Previous MS',                   weight:25, required:true },
-  { key:'minRR',        label:'Minimum RR ≥ 2.5',                           weight:5,  required:true },
-];
-
-const MODEL2_ITEMS = [
-  { key:'drawDailyTP',  label:'Draw Daily TP',                              weight:5,  required:true },
-  { key:'sos',          label:'Identify 4H SOS / 2H 2nd SOS',               weight:5,  required:true },
-  { key:'prevMS',       label:'Mark 4H / 2H Previous MS',                   weight:15, required:true },
-  { key:'sync2H',       label:'2H Timeframe Synch',                         weight:25, required:false },
-  { key:'priceReached', label:'Price Reached PMS',                          weight:20, required:true },
-  { key:'engulfing',    label:'Engulfing at PMS',                           weight:25, required:true },
-  { key:'minRR',        label:'Min RR 2.5',                                 weight:5,  required:true },
-];
 
 const WEIGHT_COLORS = {
   5:  { color: '#ec4899', bg: '#fdf2f8', rgb: '236, 72, 153' },   // Pink
@@ -75,8 +56,9 @@ export default function NewTrade({ editTrade, onDone }) {
   const [model,  setModel]  = useState(() => {
     if (editTrade?.model) return editTrade.model;
     if (mode === 'practice') return 'Practice';
-    return ''; // Default to empty, useEffect will pick first available or show empty state
+    return ''; 
   });
+  const [modelId, setModelId] = useState(editTrade?.model_id || null);
   const [pair,   setPair]   = useState(() => editTrade?.pair || (mode === 'practice' && !isEdit ? practiceDefaults.pair : ''));
   const [date,   setDate]   = useState(() => editTrade?.date || (mode === 'practice' && !isEdit && practiceDefaults.date ? practiceDefaults.date : new Date().toISOString().slice(0,10)));
   const [dir,    setDir]    = useState(editTrade?.direction || 'Buy');
@@ -99,16 +81,19 @@ export default function NewTrade({ editTrade, onDone }) {
     if (isEdit) return;
     if (mode === 'practice') {
       setModel('Practice');
+      setModelId(null);
     } else {
       // In JustChill, if current model is not a custom model for this mode, reset it
-      const isCustomInMode = customModels.some(m => m.name === model && (m.mode || 'justchill') === 'justchill');
-      if (!isCustomInMode) {
-        // Pick first available custom model or set to empty
-        const activeCustom = customModels.filter(m => (m.mode || 'justchill') === 'justchill');
+      const activeCustom = customModels.filter(m => (m.mode || 'justchill') === 'justchill');
+      const currentValid = activeCustom.find(m => (modelId && m._id === modelId) || (!modelId && m.name === model));
+      
+      if (!currentValid) {
         if (activeCustom.length > 0) {
           setModel(activeCustom[0].name);
+          setModelId(activeCustom[0]._id);
         } else {
           setModel('');
+          setModelId(null);
         }
       }
     }
@@ -118,8 +103,15 @@ export default function NewTrade({ editTrade, onDone }) {
 
 
   const activeItems = useMemo(() => {
-    // Prefer custom model checklist if it exists (allows overriding built-in models)
-    const custom = customModels.find(m => m.name.toLowerCase() === model.toLowerCase());
+    // Prefer custom model checklist by exact ID if available
+    let custom = null;
+    if (modelId) {
+      custom = customModels.find(m => m._id === modelId);
+    } else {
+      // Fallback to name if no ID (for built-ins or historical)
+      custom = customModels.find(m => m.name.toLowerCase() === model.toLowerCase());
+    }
+
     if (custom && custom.checklist) {
       return custom.checklist.map(item => {
         // Handle new object structure
@@ -142,11 +134,8 @@ export default function NewTrade({ editTrade, onDone }) {
       });
     }
 
-    // Fallback to built-in items
-    if (model === 'Model 1') return MODEL1_ITEMS;
-    if (model === 'Model 2') return MODEL2_ITEMS;
     return [];
-  }, [model, customModels]);
+  }, [modelId, customModels]);
 
   const theme = DEFAULT_THEME; // Fallback, but dynamicTheme usually handles this
 
@@ -176,7 +165,6 @@ export default function NewTrade({ editTrade, onDone }) {
 
     setBusy(true);
     try {
-      const selectedModelObj = customModels.find(m => m.name === model && (m.mode || 'justchill') === mode);
       const payload = { 
         pair: pair.toUpperCase(), 
         date, 
@@ -184,7 +172,7 @@ export default function NewTrade({ editTrade, onDone }) {
         direction: dir, 
         risk_percent: rp, 
         model: model, 
-        model_id: selectedModelObj ? (selectedModelObj._id || selectedModelObj.id) : null,
+        model_id: modelId,
         checklist: isPractice ? {} : cl, 
         notes, 
         status: asFinal ? 'final' : 'draft', 
@@ -202,7 +190,8 @@ export default function NewTrade({ editTrade, onDone }) {
       if (onDone) onDone(); else nav('/journal');
     } catch(ex) {
       const lt = ex.response?.data?.limitType;
-      if (lt) { setLimitModal(lt); playWarning(); }
+      const errorMsg = ex.response?.data?.error;
+      if (lt) { setLimitModal({ type: lt, message: errorMsg }); playWarning(); }
       else setErr(ex.response?.data?.error || 'Failed to save trade');
     } finally { setBusy(false); }
   };
@@ -262,9 +251,9 @@ export default function NewTrade({ editTrade, onDone }) {
       if (m._id || m.id || m.isHistorical) return true;
       return !hidden.includes(m.name);
     });
-    const uniqueMap = new Map();
-    filtered.forEach(m => uniqueMap.set(m.name.toLowerCase(), m));
-    const base = Array.from(uniqueMap.values());
+
+    // Return all independent records as requested - no deduplication by name.
+    return filtered;
 
     // Apply saved order
     const order = userSettings.model_order || [];
@@ -412,27 +401,20 @@ export default function NewTrade({ editTrade, onDone }) {
   return (
     <div className="page">
       {limitModal && (
-        <div className="lim-ov" onClick={()=>setLimitModal('')}>
+        <div className="lim-ov" onClick={()=>setLimitModal(null)}>
           <div className="lim-box" onClick={e=>e.stopPropagation()}>
             <div className="lim-top">
               <div className="lim-title">
-                {limitModal === 'weekly' ? 'Weekly Limit Reached' : 
-                 limitModal === 'weeklyLoss' ? 'Weekly Loss Limit Reached' : 
+                {limitModal.type === 'weekly' ? 'Weekly Limit Reached' : 
+                 limitModal.type === 'weeklyLoss' ? 'Weekly Loss Limit Reached' : 
                  'Monthly Loss Limit Reached'}
               </div>
             </div>
             <div className="lim-body">
               <div className="lim-msg">
-                {limitModal === 'weekly' 
-                  ? `You have reached ${userSettings.weekly_limit} trades this week. No more trades until next week.`
-                  : limitModal === 'weeklyLoss'
-                    ? `You have reached ${userSettings.weekly_loss_limit} losing trades this week. No more trades allowed this week.`
-                  : limitModal === 'monthly' 
-                    ? `You have reached ${userSettings.monthly_loss_limit} losing trades this month. Trading is blocked until next month.`
-                    : ''
-                }
+                {limitModal.message}
               </div>
-              <button className="lim-dismiss" onClick={()=>setLimitModal('')}>Got it</button>
+              <button className="lim-dismiss" onClick={()=>setLimitModal(null)}>Got it</button>
             </div>
           </div>
         </div>
@@ -496,7 +478,7 @@ export default function NewTrade({ editTrade, onDone }) {
                   }}
                 >
                   <button
-                    className={`mbtn ${model === m.name ? 'sel-dynamic' : ''}`}
+                    className={`mbtn ${modelId ? (m._id === modelId ? 'sel-dynamic' : '') : (m.name === model ? 'sel-dynamic' : '')}`}
                     style={{
                       height: '34px',
                       padding: '0 12px',
@@ -505,7 +487,7 @@ export default function NewTrade({ editTrade, onDone }) {
                       alignItems: 'center',
                       whiteSpace: 'nowrap',
                       pointerEvents: dragSrcIdx !== null ? 'none' : 'auto',
-                      ...(model === m.name ? (
+                      ...( (modelId ? m._id === modelId : m.name === model) ? (
                         m.name === 'Practice' ? {
                           backgroundColor: '#F1F5F9',
                           color: '#64748B',
@@ -531,6 +513,7 @@ export default function NewTrade({ editTrade, onDone }) {
                       if (dragSrcIdx !== null) return; // ignore clicks during mouse drag
                       if (touchStartedDrag.current) { touchStartedDrag.current = false; return; } // ignore clicks after touch drag
                       setModel(m.name);
+                      setModelId(m._id || null);
                       if (m.notes && !notes) setNotes(m.notes);
                     }}
                   >

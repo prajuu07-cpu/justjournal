@@ -4,6 +4,7 @@ from bson import ObjectId
 from db import get_db
 from datetime import datetime
 import random
+import re
 
 custom_models_bp = Blueprint('custom_models', __name__)
 
@@ -97,7 +98,15 @@ def create_custom_model():
     hidden_lower = [h.lower() for h in hidden_models]
     binned_lower = [b.lower() for b in binned_models]
 
-    # Removed name uniqueness check to allow multiple instances of the same name.
+    # Check for name uniqueness (case-insensitive) across all modes
+    existing_model = db.custom_models.find_one({
+        "user_id": uid,
+        "is_deleted": {"$ne": True},
+        "name": {"$regex": f"^{re.escape(name)}$", "$options": "i"}
+    })
+    
+    if existing_model:
+        return jsonify(error="This model name already exists.", message="MODEL_EXISTS"), 400
     
     # Get colors of all currently active (non-deleted) models to ensure uniqueness
     active_models = db.custom_models.find({"user_id": uid, "is_deleted": {"$ne": True}})

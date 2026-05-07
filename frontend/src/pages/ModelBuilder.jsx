@@ -5,7 +5,7 @@ import api from '../services/api';
 
 export default function ModelBuilder() {
   const nav = useNavigate();
-  const { addModel, mode, refreshData } = useMode();
+  const { addModel, mode, refreshData, customModels, userSettings } = useMode();
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [checklist, setChecklist] = useState([]);
@@ -13,8 +13,21 @@ export default function ModelBuilder() {
   const [newItem, setNewItem] = useState({ label: '', weight: '' });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
-  const [dupModal, setDupModal] = useState(false);
-  const [dupName, setDupName] = useState('');
+
+  const isDuplicate = (val) => {
+    const normalized = val.trim().toLowerCase();
+    if (!normalized) return false;
+    
+    // 1. Check active custom models
+    const activeCustom = customModels.filter(m => !m.is_deleted);
+    if (activeCustom.some(m => m.name.trim().toLowerCase() === normalized)) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const nameError = name.trim() && isDuplicate(name) ? "This model name already exists." : "";
 
   // Trade Details state (mirrored for UI consistency)
   const [pair] = useState('EURUSD');
@@ -48,6 +61,7 @@ export default function ModelBuilder() {
   const submit = async (overrideName = null) => {
     const finalName = typeof overrideName === 'string' ? overrideName : name;
     if (!finalName.trim()) return setErr('Model name is required');
+    if (isDuplicate(finalName)) return setErr('This model name already exists.');
     if (checklist.length === 0) return setErr('Add at least one checklist item');
 
     setBusy(true);
@@ -62,15 +76,10 @@ export default function ModelBuilder() {
       });
       addModel(data);
       await refreshData();
-      if (dupModal) setDupModal(false);
       nav('/new-trade');
     } catch (ex) {
-      if (ex.response?.data?.message === 'MODEL_EXISTS') {
-        setDupName(finalName);
-        setDupModal(true);
-      } else {
-        setErr('Failed to submit model');
-      }
+      const msg = ex.response?.data?.error || ex.response?.data?.message || 'Failed to submit model';
+      setErr(msg);
     } finally {
       setBusy(false);
     }
@@ -78,25 +87,6 @@ export default function ModelBuilder() {
 
   return (
     <div className="page" style={{paddingBottom: 100}}>
-      {dupModal && (
-        <div style={{position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.5)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center'}}>
-          <div style={{background:'#fff', padding:24, borderRadius:12, width:'90%', maxWidth:400, boxShadow:'0 10px 25px rgba(0,0,0,0.1)'}}>
-            <h3 style={{marginTop:0, marginBottom:12, color:'#1e293b'}}>Rename Model</h3>
-            <p style={{marginTop:0, marginBottom:16, color:'#64748b', fontSize:'0.95rem'}}>Model name already exists. Please choose another name.</p>
-            <input 
-              autoFocus
-              type="text" 
-              value={dupName} 
-              onChange={e => setDupName(e.target.value)} 
-              style={{width:'100%', padding:'10px 12px', boxSizing: 'border-box', border:'1px solid #cbd5e1', borderRadius:8, marginBottom:20, outline:'none', fontSize:'1rem'}}
-            />
-            <div style={{display:'flex', gap:12, justifyContent:'flex-end'}}>
-              <button className="btn btn-ghost" onClick={() => { setDupModal(false); nav('/new-trade'); }}>Cancel</button>
-              <button className="btn btn-ok" onClick={() => submit(dupName)} disabled={!dupName.trim() || busy}>Submit</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {step === 1 ? (
         <>
@@ -108,16 +98,30 @@ export default function ModelBuilder() {
           <div className="card">
             <div className="form-sec">Model Name</div>
             <div className="field">
-              <label>Name *</label>
+              <label style={{color: nameError ? '#ef4444' : 'inherit'}}>Name *</label>
               <input 
                 value={name} 
-                onChange={e => setName(e.target.value)} 
+                onChange={e => { setName(e.target.value); setErr(''); }} 
                 placeholder="e.g. Breakout Model"
                 autoFocus
+                style={{
+                  borderColor: nameError ? '#ef4444' : '#cbd5e1',
+                  boxShadow: nameError ? '0 0 0 1px #ef4444' : 'none'
+                }}
               />
+              {nameError && (
+                <div style={{color: '#ef4444', fontSize: '0.85rem', marginTop: '6px', fontWeight: 500}}>
+                  {nameError}
+                </div>
+              )}
             </div>
             <div style={{marginTop: '1.5rem'}}>
-              <button className="btn btn-ok w100" onClick={() => name.trim() ? setStep(2) : setErr('Name is required')}>
+              <button 
+                className="btn btn-ok w100" 
+                onClick={() => (!nameError && name.trim()) ? setStep(2) : null}
+                disabled={!!nameError || !name.trim()}
+                style={{ opacity: (nameError || !name.trim()) ? 0.6 : 1 }}
+              >
                 Continue
               </button>
             </div>

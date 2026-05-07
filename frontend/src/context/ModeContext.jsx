@@ -109,58 +109,28 @@ export const ModeProvider = ({ children }) => {
 
       // Check for collision with an active model
       if (!forceReplace) {
-        const isBuiltIn = lowerName === 'model 1' || lowerName === 'model 2';
-        const isBuiltInActive = isBuiltIn && !(userSettings.hidden_models || []).includes(name);
-        
-        // Custom models that are not deleted and are not the one we're restoring
         const customActive = customModels.some(c => 
-          c.name.toLowerCase() === lowerName && 
+          c.name.trim().toLowerCase() === lowerName && 
           !c.is_deleted && 
-          (typeof m === 'string' || c._id !== m._id)
+          (!m._id || c._id !== m._id)
         );
 
-        if (isBuiltInActive || customActive) {
+        if (customActive) {
           return 'COLLISION';
         }
       } else {
-        // If forceReplace, delete the colliding active custom model (if any)
+        // Swap: Move current active to bin
         const collidingCustom = customModels.find(c => 
-          c.name.toLowerCase() === lowerName && 
-          !c.is_deleted && 
-          (typeof m === 'string' || c._id !== m._id)
+          c.name.trim().toLowerCase() === lowerName && !c.is_deleted
         );
         if (collidingCustom) {
-          await deleteModel(collidingCustom._id || collidingCustom.id);
-        }
-
-        // Also hide the built-in model if it was active
-        const isBuiltIn = lowerName === 'model 1' || lowerName === 'model 2';
-        if (isBuiltIn) {
-          const currentlyHidden = userSettings.hidden_models || [];
-          if (!currentlyHidden.includes(name)) {
-            await updateSettings({
-              ...userSettings,
-              hidden_models: [...currentlyHidden, name]
-            });
-          }
+          await deleteModel(collidingCustom._id);
         }
       }
-
-      if (typeof m === 'string' || !m._id) { // Built-in name or historical
-        const newHidden = (userSettings.hidden_models || []).filter(h => h !== name);
-        const newBinned = (userSettings.binned_models || []).filter(h => h !== name);
-        const newArchived = (userSettings.archived_models || []).filter(h => h !== name);
-        await updateSettings({ 
-          ...userSettings, 
-          hidden_models: newHidden, 
-          binned_models: newBinned,
-          archived_models: newArchived
-        });
-      } else {
-        await api.post(`/custom-models/${m._id}/restore`);
-        const { data } = await api.get('/custom-models');
-        setCustomModels(data);
-      }
+      
+      await api.post(`/custom-models/${m._id}/restore`);
+      const { data } = await api.get('/custom-models');
+      setCustomModels(data);
       return true;
     } catch (err) {
       console.error("Restore failed", err);

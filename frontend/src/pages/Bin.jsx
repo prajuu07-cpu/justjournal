@@ -32,15 +32,14 @@ export default function Bin() {
   }, []);
 
   const binnedAll = useMemo(() => {
-    const list = (userSettings.binned_models || []).map(name => ({ name, type: 'Built-in' }));
-    binnedCustom.forEach(m => list.push({ ...m, type: 'Custom' }));
-    return list;
-  }, [userSettings.binned_models, binnedCustom]);
+    return binnedCustom.map(m => ({ ...m, type: 'Custom' }));
+  }, [binnedCustom]);
 
   const handleRestore = async (m) => {
     let ok = await restoreModel(m);
     if (ok === 'COLLISION') {
-      if (window.confirm("Model name already exists in active models. Need to delete it and replace with this model?")) {
+      const msg = `An active model named "${m.name}" already exists. Restoring this one will move the current active model to the bin. Continue?`;
+      if (window.confirm(msg)) {
         ok = await restoreModel(m, true);
       } else {
         return;

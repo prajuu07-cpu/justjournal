@@ -298,7 +298,8 @@ export default function SetLimit() {
             </small>
           </div>
         </div>
-      )}
+      </div>
+    )}
 
     </div>
   );

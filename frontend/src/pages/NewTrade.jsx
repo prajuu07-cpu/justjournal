@@ -45,7 +45,7 @@ function playWarning() {
 
 export default function NewTrade({ editTrade, onDone }) {
   const nav = useNavigate();
-  const { mode, switchMode, practiceDefaults, updatePracticeDefaults, customModels, deleteModel, restoreModel, updateSettings, userSettings } = useMode();
+  const { mode, switchMode, practiceDefaults, updatePracticeDefaults, customModels, deleteModel, restoreModel, updateSettings, userSettings, refreshData, loading } = useMode();
   const isEdit = !!editTrade?.id;
   const handleAddModel = () => {
     switchMode('practice');
@@ -423,11 +423,27 @@ export default function NewTrade({ editTrade, onDone }) {
       <div className="page-hd">
         <h1>{isEdit ? 'Edit Trade' : 'New Trade'}</h1>
         <div className="hd-actions">
+          <button 
+            className="btn btn-ghost" 
+            onClick={refreshData} 
+            disabled={loading || busy}
+            title="Refresh Models"
+            style={{ padding: '8px' }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={loading ? 'spin' : ''}>
+              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+              <path d="M21 3v5h-5"/>
+            </svg>
+          </button>
           <button className="btn btn-ghost" onClick={() => onDone ? onDone() : nav('/journal')}>Cancel</button>
-          <button className="btn btn-ghost" onClick={() => save(false)} disabled={busy || (mode === 'practice' && !manualGrade)}>Save Draft</button>
-          <button className="btn btn-ok" onClick={() => save(true)} disabled={busy || (mode === 'practice' && !manualGrade)}>Save Final</button>
+          <button className="btn btn-ghost" onClick={() => save(false)} disabled={busy || loading || (mode === 'practice' && !manualGrade)}>Save Draft</button>
+          <button className="btn btn-ok" onClick={() => save(true)} disabled={busy || loading || (mode === 'practice' && !manualGrade)}>Save Final</button>
         </div>
       </div>
+
+      {loading && !displayBadges.length && (
+        <div className="loading" style={{ margin: '20px 0' }}>Fetching models…</div>
+      )}
 
       {err && (
         <div className="err-box" style={{marginBottom:24, justifyContent: 'center'}}>

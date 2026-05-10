@@ -46,7 +46,10 @@ export default function Journal() {
         setTrades(r.data.trades);
         if (r.data.models) setAvailableModels(r.data.models);
       })
-      .catch(console.error)
+      .catch(ex => {
+        console.error(ex);
+        setErr(ex.response?.data?.error || 'Failed to load trades. Check your connection.');
+      })
       .finally(() => setLoading(false));
   }, [filter, mode]);
 

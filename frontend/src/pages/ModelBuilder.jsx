@@ -5,7 +5,7 @@ import api from '../services/api';
 
 export default function ModelBuilder() {
   const nav = useNavigate();
-  const { addModel, mode, refreshData, customModels, userSettings } = useMode();
+  const { addModel, mode, refreshData, customModels, userSettings, switchMode } = useMode();
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [checklist, setChecklist] = useState([]);
@@ -76,6 +76,7 @@ export default function ModelBuilder() {
       });
       addModel(data);
       await refreshData();
+      switchMode('justchill');
       nav('/new-trade');
     } catch (ex) {
       const msg = ex.response?.data?.error || ex.response?.data?.message || 'Failed to submit model';

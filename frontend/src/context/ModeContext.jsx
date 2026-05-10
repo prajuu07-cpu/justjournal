@@ -24,6 +24,7 @@ export const ModeProvider = ({ children }) => {
     archived_models: [],
     model_order: []
   });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('tjp_active_mode', mode);
@@ -31,6 +32,7 @@ export const ModeProvider = ({ children }) => {
 
   const refreshData = async () => {
     if (!localStorage.getItem('tjp_token')) return;
+    setLoading(true);
     try {
       const [{ data: models }, { data: settings }] = await Promise.all([
         api.get('/custom-models'),
@@ -40,6 +42,8 @@ export const ModeProvider = ({ children }) => {
       setUserSettings(settings);
     } catch (err) {
       console.error("Failed to refresh data", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -49,7 +53,7 @@ export const ModeProvider = ({ children }) => {
 
   useEffect(() => {
     refreshData();
-  }, []);
+  }, [mode]);
 
   // ── Auto-update: poll /health every 5 min, reload if version changed ────────
   useEffect(() => {
@@ -190,7 +194,8 @@ export const ModeProvider = ({ children }) => {
       emptyBin,
       userSettings,
       updateSettings,
-      refreshData
+      refreshData,
+      loading
     }}>
       {children}
     </ModeContext.Provider>

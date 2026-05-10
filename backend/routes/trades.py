@@ -21,25 +21,7 @@ from rebuild_reports import rebuild_reports
 trades_bp = Blueprint("trades", __name__)
 
 # ── Checklist weights ─────────────────────────────────────────────────────────
-MODEL1_WEIGHTS = {
-    "drawDailyTP":  5,
-    "trigger":      5,
-    "prevMS":       15,
-    "sync2H":       25,
-    "priceReached": 20,
-    "engulfing":    25,
-    "minRR":        5,
-}
 
-MODEL2_WEIGHTS = {
-    "drawDailyTP":  5,
-    "sos":          5,
-    "prevMS":       15,
-    "sync2H":       25,
-    "priceReached": 20,
-    "engulfing":    25,
-    "minRR":        5,
-}
 
 
 def _now_iso() -> str:
@@ -47,33 +29,30 @@ def _now_iso() -> str:
 
 
 
-def _calc_score(model: str, cl: dict, uid: Optional[ObjectId] = None) -> int:
+def _calc_score_and_total(model: str, cl: dict, uid: Optional[ObjectId] = None) -> tuple[int, int]:
     if model == "Practice":
-        return 0
-    if model == "Model 1":
-        return sum(MODEL1_WEIGHTS[k] for k, v in cl.items() if v and k in MODEL1_WEIGHTS)
-    if model == "Model 2":
-        return sum(MODEL2_WEIGHTS[k] for k, v in cl.items() if v and k in MODEL2_WEIGHTS)
-    
+        return 0, 100
     # Custom model lookup
     if uid:
         db = get_db()
         custom = db.custom_models.find_one({"user_id": uid, "name": model})
         if custom and custom.get("checklist"):
             items = custom["checklist"]
-            if not items: return 0
+            if not items: return 0, 100
             
             score = 0
+            total = 0
             for item in items:
                 # Support both old string list and new object list
                 label = item["label"] if isinstance(item, dict) else item
                 weight = item.get("weight", 100/len(items)) if isinstance(item, dict) else (100/len(items))
                 
+                total += weight
                 if cl.get(label):
                     score += weight
-            return int(round(score))
+            return int(round(score)), int(round(total))
             
-    return 0
+    return 0, 100
 
 
 def _calc_grade(score: int) -> str:
@@ -281,7 +260,7 @@ def create_trade():
     if status not in ("draft", "final"):
         return jsonify(error="Status must be 'draft' or 'final'"), 400
 
-    score = _calc_score(model, checklist, uid)
+    score, total_pts = _calc_score_and_total(model, checklist, uid)
     # Respect manual grade for Practice mode, otherwise calculate from score
     grade = data.get("grade") if model == "Practice" else _calc_grade(score)
     if not grade: grade = _calc_grade(score)
@@ -383,7 +362,7 @@ def update_trade(trade_id):
     except (TypeError, ValueError, AssertionError):
         return jsonify(error="Risk % must be between 0.01 and 5"), 400
 
-    score = _calc_score(model, checklist, uid)
+    score, total_pts = _calc_score_and_total(model, checklist, uid)
     # Respect manual grade for Practice mode, otherwise calculate from score
     grade = data.get("grade") if model == "Practice" else _calc_grade(score)
     if not grade: grade = _calc_grade(score)

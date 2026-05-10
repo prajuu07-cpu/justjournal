@@ -141,7 +141,7 @@ export default function DailyPnLCalendar({ year, month, dailyBreakdown = {} }) {
                   <thead>
                     <tr>
                       <th>Pair</th>
-                      <th>Type</th>
+                      <th>Dir</th>
                       <th>Risk</th>
                       <th>Result</th>
                       <th style={{textAlign: 'center'}}>RR</th>

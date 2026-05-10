@@ -210,6 +210,32 @@ export default function ModelBuilder() {
               })}
               {checklist.length === 0 && <div style={{textAlign:'center', color:'#999', padding:'40px', background: '#f8fafc', borderRadius: 12, border: '2px dashed #e2e8f0'}}>No items added yet</div>}
             </div>
+
+            {checklist.length > 0 && (
+              <div style={{marginTop: '24px', padding: '16px', background: '#eff6ff', borderRadius: 12, border: '1px solid #dbeafe'}}>
+                <div style={{fontSize: '0.75rem', fontWeight: 700, color: '#1e40af', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px'}}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                  Grading Scale
+                </div>
+                <div style={{display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px'}}>
+                  {[
+                    { label: 'A+', range: '90+ pts', color: '#7c3aed' },
+                    { label: 'A',  range: '75-89 pts',  color: '#2563EB' },
+                    { label: 'B',  range: '60-74 pts',  color: '#16A34A' },
+                    { label: 'C',  range: '50-59 pts',  color: '#D97706' },
+                    { label: 'Avoid', range: '< 50 pts', color: '#e11d48' },
+                  ].map(g => (
+                    <div key={g.label} style={{display: 'flex', flexDirection: 'column', gap: '2px'}}>
+                      <span style={{fontSize: '0.85rem', fontWeight: 800, color: g.color}}>{g.label}</span>
+                      <span style={{fontSize: '0.7rem', fontWeight: 600, color: '#64748b'}}>{g.range}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{marginTop: '12px', fontSize: '0.75rem', color: '#475569', fontStyle: 'italic'}}>
+                  Grades are calculated based on the absolute points achieved.
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="card">

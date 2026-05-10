@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+// VERSION: 2.1 - ABSOLUTE POINTS ONLY
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useMode } from '../context/ModeContext';
@@ -15,7 +16,7 @@ const DEFAULT_COLOR = { color: '#4F46E5', bg: '#EEF2FF', rgb: '79, 70, 229' };
 const DEFAULT_THEME = { wBg: '#EEF2FF', wBorder: '#C7D2FE', wText: '#4F46E5', wUl: '#6366F1' };
 
 function calcScore(cl, items) { 
-  return items.reduce((s,i) => s + (cl[i.key] ? (i.weight || 0) : 0), 0); 
+  return items.reduce((s,i) => s + (cl[i.key] ? (Number(i.weight) || 0) : 0), 0); 
 }
 function calcGrade(sc) { 
   if (sc >= 90) return 'A+';
@@ -140,6 +141,7 @@ export default function NewTrade({ editTrade, onDone }) {
   const theme = DEFAULT_THEME; // Fallback, but dynamicTheme usually handles this
 
   const score   = useMemo(()=>calcScore(cl, activeItems),[cl, activeItems]);
+  const totalPossible = useMemo(() => activeItems.reduce((s, i) => s + (i.weight || 0), 0), [activeItems]);
   const grade   = mode === 'practice' ? manualGrade : calcGrade(score);
   const missing = useMemo(()=>getMissing(cl, activeItems),[cl, activeItems]);
 
@@ -622,7 +624,9 @@ export default function NewTrade({ editTrade, onDone }) {
                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom: '16px'}}>
                   <div>
                     <div style={{fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4}}>Total Points</div>
-                    <div className="sc-n" style={{color:barColor, fontSize: '2.5rem', textAlign: 'left', lineHeight: 1, fontWeight: 900}}>{score}</div>
+                    <div className="sc-n" style={{color:barColor, fontSize: '2.5rem', textAlign: 'left', lineHeight: 1, fontWeight: 900}}>
+                      {score}
+                    </div>
                   </div>
                   
                   <div style={{textAlign: 'right'}}>

@@ -388,7 +388,7 @@ def update_trade(trade_id):
         else:
             r_multiple, pnl = None, None
 
-    if mode == "justchill":
+    if mode == "justchill" and existing.get("status") != "final":
         limit_err = _check_model_limits(uid, model, trade_date, exclude_oid=oid)
         if limit_err:
             return jsonify(limit_err), 422
@@ -455,7 +455,7 @@ def add_result(trade_id):
         pnl = _calc_pnl(existing.get("risk_percent", 1.0), r_multiple)
 
     mode = get_mode()
-    if mode == "justchill":
+    if mode == "justchill" and existing.get("status") != "final":
         limit_err = _check_model_limits(uid, existing.get("model"), existing.get("date"), exclude_oid=oid)
         if limit_err:
             return jsonify(limit_err), 422

@@ -254,12 +254,9 @@ export default function NewTrade({ editTrade, onDone }) {
       return !hidden.includes(m.name);
     });
 
-    // Return all independent records as requested - no deduplication by name.
-    return filtered;
-
     // Apply saved order
     const order = userSettings.model_order || [];
-    base.sort((a, b) => {
+    filtered.sort((a, b) => {
       const ai = order.indexOf(a.name), bi = order.indexOf(b.name);
       if (ai !== -1 && bi !== -1) return ai - bi;
       if (ai !== -1) return -1;
@@ -268,7 +265,7 @@ export default function NewTrade({ editTrade, onDone }) {
       if (b.name === 'Practice') return 1;
       return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
     });
-    return base;
+    return filtered;
   }, [mode, customModels, model, userSettings.hidden_models, userSettings.model_order]);
 
   // The rendered list — uses live drag order when dragging, otherwise modelBadges

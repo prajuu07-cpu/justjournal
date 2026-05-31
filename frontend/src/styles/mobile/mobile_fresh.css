@@ -11,7 +11,9 @@
 .m-container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   background: var(--m-bg);
   font-family: 'Inter', sans-serif;
 }
@@ -146,6 +148,8 @@
 .m-content {
   flex: 1;
   padding: 16px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ── OVERRIDES FOR DESKTOP COMPONENTS (MOBILE VIEW) ── */

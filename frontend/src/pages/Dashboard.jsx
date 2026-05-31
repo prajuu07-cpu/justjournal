@@ -22,6 +22,28 @@ export default function Dashboard() {
     }).catch(console.error).finally(() => setLoading(false));
   }, [mode]);
 
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.unregister();
+        }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        for (const key of keys) {
+          await caches.delete(key);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to clear caches/service worker:', e);
+    } finally {
+      window.location.reload(true);
+    }
+  };
+
   if (loading) return <div className="loading">Loading dashboard…</div>;
 
   const s = stats || {};
@@ -37,8 +59,17 @@ export default function Dashboard() {
   return (
     <div className="page">
       <div className="page-hd">
-        <h1>Dashboard</h1>
-        <p>Welcome back, <strong>@{user?.username}</strong></p>
+        <div>
+          <h1>Dashboard</h1>
+          <p>Welcome back, <strong>@{user?.username}</strong></p>
+        </div>
+        {mode === 'justchill' && (
+          <div className="header-btns">
+            <button className="btn btn-ghost" onClick={handleRefresh}>
+              Refresh
+            </button>
+          </div>
+        )}
       </div>
       <div className="sg">
         {statBoxes.map(b => (
